@@ -6,6 +6,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 import json
+from sqlalchemy import func
 from src.database.connection import get_db_session
 from src.database.models import *
 from src.data_generation.generate_students import generate_students
@@ -200,7 +201,9 @@ def populate_students_and_skills(session, num_students=500, clear_existing=False
     
     session.commit()
     print(f"✓ {num_students} students and their skills populated!")
-    print(f"  Program distribution: {session.query(Student.program, func.count(Student.student_id)).group_by(Student.program).all()}")
+    # Show program distribution
+    dist = session.query(Student.program, func.count(Student.student_id)).group_by(Student.program).all()
+    print(f"  Program distribution: {dict(dist)}")
 
 def main():
     session = get_db_session()
