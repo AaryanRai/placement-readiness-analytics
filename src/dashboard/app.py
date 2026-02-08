@@ -1096,7 +1096,7 @@ def render_ml_section():
         
         with col1:
             # Classifier feature importance - using actual model data
-            st.markdown("**Decision Tree Classifier - Top 10 Features**")
+            st.markdown("**Decision Tree Classifier - Top 15 Features**")
             if model_info['classifier'] is not None:
                 classifier_top = model_info['classifier'].head(10).copy()
                 # Clean feature names for display
