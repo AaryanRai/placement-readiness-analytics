@@ -106,10 +106,10 @@ st.markdown("""
     .section-header {
         font-size: 1.5rem;
         font-weight: 600;
-        color: #1e293b;
+        color: #ffffff;
         margin: 2rem 0 1rem 0;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid #475569;
     }
     
     .insight-box {
@@ -161,6 +161,59 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Text color fixes for dark theme */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+    }
+    
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #ffffff !important;
+    }
+    
+    /* Info card styles */
+    .info-card {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        color: #ffffff;
+    }
+    
+    .info-card h3 {
+        color: #ffffff;
+        margin-top: 0;
+        font-size: 1.25rem;
+    }
+    
+    .info-card p, .info-card li {
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.6;
+    }
+    
+    .model-card {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        color: #ffffff;
+    }
+    
+    .model-card h3 {
+        color: #ffffff;
+        margin-top: 0;
+        font-size: 1.25rem;
+    }
+    
+    .model-card code {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        color: #ffffff;
+        font-family: 'Courier New', monospace;
+    }
     
     /* Custom scrollbar */
     ::-webkit-scrollbar {
@@ -311,25 +364,73 @@ def load_skill_gap_data():
 
 @st.cache_data(ttl=300)
 def load_student_table_data():
-    """Load student table data for drill-down."""
+    """Load student table data for drill-down - one record per student showing best score."""
+    session = get_db_session()
+    try:
+        # Get all students with their best readiness scores
+        students = session.query(Student).all()
+        results = []
+        
+        for student in students:
+            # Get all scores for this student
+            scores = session.query(
+                MarketReadinessScores.readiness_score,
+                MarketReadinessScores.readiness_level,
+                JobRole.role_name
+            ).join(
+                JobRole, MarketReadinessScores.role_id == JobRole.role_id
+            ).filter(
+                MarketReadinessScores.student_id == student.student_id
+            ).all()
+            
+            if scores:
+                # Find the best score
+                best_score = max(scores, key=lambda x: x[0])
+                results.append({
+                    'Name': student.name,
+                    'Program': student.program,
+                    'Year': student.year_of_study,
+                    'Best Role': best_score[2],
+                    'Score': float(best_score[0]),
+                    'Level': best_score[1]
+                })
+        
+        return pd.DataFrame(results)
+    finally:
+        session.close()
+
+@st.cache_data(ttl=300)
+def load_year_progression():
+    """Load readiness progression by academic year."""
     session = get_db_session()
     try:
         data = session.query(
-            Student.name,
-            Student.program,
             Student.year_of_study,
-            JobRole.role_name,
-            MarketReadinessScores.readiness_score,
-            MarketReadinessScores.readiness_level
+            MarketReadinessScores.readiness_level,
+            func.count(func.distinct(MarketReadinessScores.student_id)).label('count')
         ).join(
             MarketReadinessScores, Student.student_id == MarketReadinessScores.student_id
-        ).join(
-            JobRole, MarketReadinessScores.role_id == JobRole.role_id
+        ).group_by(
+            Student.year_of_study, MarketReadinessScores.readiness_level
         ).all()
         
-        return pd.DataFrame(data, columns=[
-            'Name', 'Program', 'Year', 'Role', 'Score', 'Level'
-        ])
+        return pd.DataFrame(data, columns=['Year', 'Level', 'Count'])
+    finally:
+        session.close()
+
+@st.cache_data(ttl=300)
+def load_skill_acquisition_trends():
+    """Load skill acquisition trends over time."""
+    session = get_db_session()
+    try:
+        data = session.query(
+            func.date_trunc('month', StudentSkills.acquisition_date).label('month'),
+            func.count(StudentSkills.id).label('skill_count')
+        ).group_by(
+            func.date_trunc('month', StudentSkills.acquisition_date)
+        ).order_by('month').all()
+        
+        return pd.DataFrame(data, columns=['Month', 'Skills Acquired'])
     finally:
         session.close()
 
@@ -412,6 +513,11 @@ def render_kpi_cards():
 
 def render_cohort_section():
     """Render cohort health overview section."""
+    # #region agent log
+    import json
+    with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"location":"app.py:413","message":"render_cohort_section called","data":{},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+    # #endregion
     st.markdown('<div class="section-header">Cohort Health Overview</div>', unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
@@ -443,12 +549,12 @@ def render_cohort_section():
                 legend=dict(orientation="v", yanchor="middle", y=0.5, x=1.05),
                 font=dict(family="Arial, sans-serif", size=12),
                 margin=dict(l=20, r=20, t=40, b=20),
-                title=dict(
-                    text="Readiness Distribution",
-                    font=dict(size=16, color='#1e293b'),
-                    x=0.5,
-                    xanchor='center'
-                )
+            title=dict(
+                text="Readiness Distribution",
+                font=dict(size=16, color='#ffffff'),
+                x=0.5,
+                xanchor='center'
+            )
             )
             st.plotly_chart(fig, use_container_width=True)
             
@@ -479,20 +585,43 @@ def render_cohort_section():
                 textposition='outside',
                 marker=dict(line=dict(color='#ffffff', width=1))
             )
-            fig.update_layout(
-                height=400,
-                showlegend=False,
-                xaxis=dict(title="Academic Program", titlefont=dict(size=13)),
-                yaxis=dict(title="Average Readiness (%)", titlefont=dict(size=13)),
-                font=dict(family="Arial, sans-serif", size=12),
-                margin=dict(l=20, r=20, t=40, b=20),
+            # #region agent log
+            import json
+            import traceback
+            try:
+                with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"location":"app.py:487","message":"Before update_layout","data":{"xaxis_config":"title=dict(text=..., font=dict(size=13))"},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            except: pass
+            # #endregion
+            try:
+                fig.update_layout(
+                    height=400,
+                    showlegend=False,
+                    xaxis=dict(title=dict(text="Academic Program", font=dict(size=13))),
+                    yaxis=dict(title=dict(text="Average Readiness (%)", font=dict(size=13))),
+                    font=dict(family="Arial, sans-serif", size=12),
+                    margin=dict(l=20, r=20, t=40, b=20),
                 title=dict(
                     text="Program Performance Comparison",
-                    font=dict(size=16, color='#1e293b'),
+                    font=dict(size=16, color='#ffffff'),
                     x=0.5,
                     xanchor='center'
                 )
-            )
+                )
+                # #region agent log
+                try:
+                    with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({"location":"app.py:492","message":"update_layout succeeded","data":{},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+                except: pass
+                # #endregion
+            except Exception as e:
+                # #region agent log
+                try:
+                    with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({"location":"app.py:492","message":"update_layout ERROR","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+                except: pass
+                # #endregion
+                raise
             st.plotly_chart(fig, use_container_width=True)
             
             # Insight
@@ -506,6 +635,11 @@ def render_cohort_section():
 
 def render_career_section():
     """Render career role intelligence section."""
+    # #region agent log
+    import json
+    with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+        f.write(json.dumps({"location":"app.py:507","message":"render_career_section called","data":{},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+    # #endregion
     st.markdown('<div class="section-header">Career Role Intelligence</div>', unsafe_allow_html=True)
     
     df_roles = load_career_role_intelligence()
@@ -529,21 +663,44 @@ def render_career_section():
             customdata=df_roles['Avg Score']
         ))
         
-        fig.update_layout(
-            height=350,
-            xaxis=dict(title="Number of Ready Students", titlefont=dict(size=13)),
-            yaxis=dict(title="", titlefont=dict(size=13)),
-            font=dict(family="Arial, sans-serif", size=12),
-            margin=dict(l=20, r=20, t=40, b=20),
+        # #region agent log
+        import json
+        import traceback
+        try:
+            with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({"location":"app.py:547","message":"Before career update_layout","data":{"xaxis_config":"title=dict(text=..., font=dict(size=13))"},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+        except: pass
+        # #endregion
+        try:
+            fig.update_layout(
+                height=350,
+                xaxis=dict(title=dict(text="Number of Ready Students", font=dict(size=13))),
+                yaxis=dict(title=""),
+                font=dict(family="Arial, sans-serif", size=12),
+                margin=dict(l=20, r=20, t=40, b=20),
             title=dict(
                 text="Student Readiness by Career Path",
-                font=dict(size=16, color='#1e293b'),
+                font=dict(size=16, color='#ffffff'),
                 x=0.5,
                 xanchor='center'
             ),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
-        )
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            # #region agent log
+            try:
+                with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"location":"app.py:552","message":"career update_layout succeeded","data":{},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            except: pass
+            # #endregion
+        except Exception as e:
+            # #region agent log
+            try:
+                with open('/Users/aaryanrai/Downloads/Career Readiness Prediction/.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({"location":"app.py:552","message":"career update_layout ERROR","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":int(__import__('time').time()*1000)}) + '\n')
+            except: pass
+            # #endregion
+            raise
         
         st.plotly_chart(fig, use_container_width=True)
         
@@ -584,7 +741,7 @@ def render_skill_gap_section():
             margin=dict(l=20, r=20, t=40, b=20),
             title=dict(
                 text="Critical Skill Gaps Across Student Population",
-                font=dict(size=16, color='#1e293b'),
+                font=dict(size=16, color='#ffffff'),
                 x=0.5,
                 xanchor='center'
             )
@@ -604,7 +761,7 @@ def render_skill_gap_section():
         st.info("Skill gap analysis data is being processed. Please check back shortly.")
 
 def render_data_table():
-    """Render filterable student data table."""
+    """Render filterable student data table - showing unique students only."""
     st.markdown('<div class="section-header">Student Data Explorer</div>', unsafe_allow_html=True)
     
     df_students = load_student_table_data()
@@ -622,8 +779,8 @@ def render_data_table():
             selected_year = st.selectbox("Academic Year", years)
         
         with col3:
-            roles = ['All'] + sorted(df_students['Role'].unique().tolist())
-            selected_role = st.selectbox("Career Role", roles)
+            roles = ['All'] + sorted(df_students['Best Role'].unique().tolist())
+            selected_role = st.selectbox("Best Career Role", roles)
         
         with col4:
             levels = ['All'] + sorted(df_students['Level'].unique().tolist())
@@ -636,11 +793,12 @@ def render_data_table():
         if selected_year != 'All':
             filtered_df = filtered_df[filtered_df['Year'] == selected_year]
         if selected_role != 'All':
-            filtered_df = filtered_df[filtered_df['Role'] == selected_role]
+            filtered_df = filtered_df[filtered_df['Best Role'] == selected_role]
         if selected_level != 'All':
             filtered_df = filtered_df[filtered_df['Level'] == selected_level]
         
-        # Format score
+        # Format score and drop Target Role column for display
+        filtered_df = filtered_df[['Name', 'Program', 'Year', 'Best Role', 'Score', 'Level']].copy()
         filtered_df['Score'] = filtered_df['Score'].apply(lambda x: f"{x:.1f}%")
         
         # Color code readiness level
@@ -662,13 +820,138 @@ def render_data_table():
                 "Name": st.column_config.TextColumn("Student Name", width="medium"),
                 "Program": st.column_config.TextColumn("Program", width="small"),
                 "Year": st.column_config.NumberColumn("Year", width="small"),
-                "Role": st.column_config.TextColumn("Career Role", width="medium"),
+                "Best Role": st.column_config.TextColumn("Best Career Role", width="medium"),
                 "Score": st.column_config.TextColumn("Readiness Score", width="small"),
                 "Level": st.column_config.TextColumn("Level", width="small")
             }
         )
         
-        st.caption(f"Showing {len(filtered_df)} of {len(df_students)} records")
+        st.caption(f"Showing {len(filtered_df)} of {len(df_students)} students (each student shown once with their best readiness score)")
+
+def render_year_progression():
+    """Render readiness progression by academic year."""
+    st.markdown('<div class="section-header">Readiness Progression by Academic Year</div>', unsafe_allow_html=True)
+    
+    df_progression = load_year_progression()
+    if not df_progression.empty:
+        fig = px.bar(
+            df_progression,
+            x='Year',
+            y='Count',
+            color='Level',
+            barmode='group',
+            color_discrete_map={
+                'Ready': '#059669',
+                'Developing': '#d97706',
+                'Entry-Level': '#dc2626'
+            },
+            labels={'Count': 'Number of Students', 'Year': 'Academic Year'}
+        )
+        fig.update_layout(
+            height=400,
+            font=dict(family="Arial, sans-serif", size=12),
+            margin=dict(l=20, r=20, t=40, b=20),
+            title=dict(
+                text="Readiness Distribution Across Academic Years",
+                font=dict(size=16, color='#ffffff'),
+                x=0.5,
+                xanchor='center'
+            ),
+            legend=dict(font=dict(color='#ffffff'))
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(title=dict(text="Academic Year", font=dict(size=13, color='#ffffff'))),
+            yaxis=dict(title=dict(text="Number of Students", font=dict(size=13, color='#ffffff')))
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Insight
+        st.markdown("""
+        <div class="insight-box">
+            <strong>Insight:</strong> This chart shows how readiness levels are distributed across different academic years. 
+            Higher years typically show improved readiness as students gain more skills and experience.
+        </div>
+        """, unsafe_allow_html=True)
+
+def render_about_section():
+    """Render about section with data information."""
+    st.markdown('<div class="section-header">About the System</div>', unsafe_allow_html=True)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="info-card">
+            <h3>Dataset Overview</h3>
+            <p><strong>Student Population:</strong> 500 students across 3 academic programs</p>
+            <ul>
+                <li><strong>BBA:</strong> Business Administration</li>
+                <li><strong>BCA:</strong> Computer Applications</li>
+                <li><strong>B.Com:</strong> Commerce</li>
+            </ul>
+            <p><strong>Skills Tracked:</strong> 47 skills across 4 major categories:</p>
+            <ul>
+                <li>Technical Skills (Programming, Data Analysis, Web Development, Database, Cloud)</li>
+                <li>Business Skills (Analysis, Marketing, Management)</li>
+                <li>Design Skills (UI/UX, Graphics)</li>
+                <li>Soft Skills (Communication, Leadership, Problem Solving)</li>
+            </ul>
+            <p><strong>Career Roles Analyzed:</strong> 5 high-demand roles</p>
+            <ul>
+                <li>Data Analyst</li>
+                <li>Full-Stack Developer</li>
+                <li>Digital Marketer</li>
+                <li>Business Analyst</li>
+                <li>UX/UI Designer</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="info-card">
+            <h3>Key Features</h3>
+            <ul>
+                <li><strong>Real-time Readiness Scoring:</strong> Calculated for each student-role combination</li>
+                <li><strong>Skill Gap Analysis:</strong> Identifies critical missing skills across the cohort</li>
+                <li><strong>Program Comparison:</strong> Compare readiness across different academic programs</li>
+                <li><strong>Career Path Intelligence:</strong> Understand which roles students are most prepared for</li>
+                <li><strong>Progress Tracking:</strong> Monitor readiness progression by academic year</li>
+                <li><strong>Individual Student Insights:</strong> Drill down into specific student readiness profiles</li>
+            </ul>
+            <p><strong>Data Updates:</strong> Scores are recalculated regularly to reflect latest skill acquisitions and role requirements.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="model-card">
+        <h3>How the Readiness Scoring Model Works</h3>
+        <p>The Market Readiness Score is calculated using a <strong>weighted skill matching algorithm</strong>:</p>
+        <ol>
+            <li><strong>Skill Matching:</strong> For each career role, the system identifies required skills and their importance weights</li>
+            <li><strong>Proficiency Assessment:</strong> Student skills are evaluated at four levels:
+                <ul>
+                    <li>Beginner (25% proficiency)</li>
+                    <li>Intermediate (50% proficiency)</li>
+                    <li>Advanced (75% proficiency)</li>
+                    <li>Expert (100% proficiency)</li>
+                </ul>
+            </li>
+            <li><strong>Weighted Calculation:</strong> The score formula is:
+                <br><code>Score = (Σ matched_proficiency × importance_weight) / Σ required_weights × 100</code>
+            </li>
+            <li><strong>Partial Credit:</strong> Students receive partial credit if their proficiency is lower than required</li>
+            <li><strong>Readiness Classification:</strong>
+                <ul>
+                    <li><strong>Ready (80-100%):</strong> Student is job-ready for this role</li>
+                    <li><strong>Developing (50-79%):</strong> Student needs moderate skill development</li>
+                    <li><strong>Entry-Level (0-49%):</strong> Student requires significant skill building</li>
+                </ul>
+            </li>
+        </ol>
+        <p><strong>Example:</strong> If a role requires Python (weight: 1.0) and SQL (weight: 0.9), and a student has Python at Advanced (75%) and SQL at Intermediate (50%), the score would be: ((0.75 × 1.0) + (0.50 × 0.9)) / (1.0 + 0.9) × 100 = 63.2% (Developing level)</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ============================================================================
 # MAIN APPLICATION
@@ -698,9 +981,15 @@ def main():
     
     # Render selected section
     if page == "Overview":
+        render_about_section()
+        st.markdown("<br>", unsafe_allow_html=True)
         render_cohort_section()
+        st.markdown("<br>", unsafe_allow_html=True)
+        render_year_progression()
     elif page == "Cohort Analytics":
         render_cohort_section()
+        st.markdown("<br>", unsafe_allow_html=True)
+        render_year_progression()
     elif page == "Career Readiness":
         render_career_section()
     elif page == "Skill Gap Analysis":
