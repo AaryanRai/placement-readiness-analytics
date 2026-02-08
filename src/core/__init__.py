@@ -1,4 +1,4 @@
 """
-Core algorithms for market readiness scoring
+Core algorithms and business logic
 """
 

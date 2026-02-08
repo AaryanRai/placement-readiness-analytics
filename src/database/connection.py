@@ -2,24 +2,21 @@
 Database connection and session management
 """
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, Session
 from config.database import DATABASE_URL
 
-# Create engine
+# Create SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20
+    echo=False  # Set to True for SQL query logging
 )
 
 # Create session factory
-SessionLocal = scoped_session(
-    sessionmaker(autocommit=False, autoflush=False, bind=engine)
-)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db_session():
+def get_db_session() -> Session:
     """
     Get a database session.
     Usage:
@@ -33,7 +30,14 @@ def get_db_session():
     return SessionLocal()
 
 
-def close_db_session():
-    """Close the current database session."""
-    SessionLocal.remove()
+def create_tables():
+    """Create all database tables"""
+    from src.database.models import Base
+    Base.metadata.create_all(bind=engine)
+
+
+def drop_tables():
+    """Drop all database tables (use with caution!)"""
+    from src.database.models import Base
+    Base.metadata.drop_all(bind=engine)
 

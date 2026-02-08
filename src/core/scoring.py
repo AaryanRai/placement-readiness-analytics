@@ -4,8 +4,8 @@ Market Readiness Score Calculation Engine
 from decimal import Decimal
 from typing import Dict
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 from src.database.models import Student, JobRole, JobRoleSkills, StudentSkills, MarketReadinessScores
+from sqlalchemy import func
 
 PROFICIENCY_MAP = {
     'Beginner': Decimal('0.25'),

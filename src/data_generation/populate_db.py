@@ -5,86 +5,107 @@ from src.database.connection import get_db_session
 from src.database.models import (
     Student, SkillsMaster, StudentSkills, JobRole, JobRoleSkills, MarketReadinessScores
 )
-from src.data_generation.generate_students import generate_students_batch
-from src.data_generation.generate_skills import (
-    generate_skills_master, generate_job_roles, generate_student_skills
-)
-from datetime import datetime
+from src.data_generation.generate_students import generate_students
+from src.data_generation.generate_skills import get_all_skills, generate_student_skills
+
+# MVP Configuration (500 students)
+STUDENT_CONFIG = {
+    'total': 500,
+    'programs': {
+        'BBA': 200,   # 40%
+        'BCA': 175,   # 35%
+        'B.Com': 125  # 25%
+    }
+}
+
+# Job roles for MVP (5 roles)
+JOB_ROLES = [
+    {'role_name': 'Data Analyst', 'role_category': 'Technical', 'description': 'Analyzes data to help businesses make decisions'},
+    {'role_name': 'Full-Stack Developer', 'role_category': 'Technical', 'description': 'Develops both frontend and backend applications'},
+    {'role_name': 'Digital Marketer', 'role_category': 'Business', 'description': 'Manages online marketing campaigns'},
+    {'role_name': 'Business Analyst', 'role_category': 'Business', 'description': 'Analyzes business processes and requirements'},
+    {'role_name': 'UX/UI Designer', 'role_category': 'Design', 'description': 'Designs user interfaces and experiences'}
+]
 
 
-def populate_database(total_students: int = 500):
-    """
-    Populate the database with synthetic data.
-    
-    Args:
-        total_students: Number of students to generate (default: 500 for MVP)
-    """
+def populate_database():
+    """Populate database with synthetic data"""
     session = get_db_session()
     
     try:
-        print(f"Starting database population with {total_students} students...")
+        print("=" * 60)
+        print("POPULATING DATABASE WITH SYNTHETIC DATA")
+        print("=" * 60)
         
-        # 1. Generate and insert skills_master
-        print("\n1. Generating skills master...")
-        skills = generate_skills_master()
-        for skill_data in skills:
+        # Step 1: Populate Skills Master
+        print("\n[1/5] Populating skills_master...")
+        all_skills = get_all_skills()
+        for skill_data in all_skills:
             skill = SkillsMaster(**skill_data)
             session.add(skill)
         session.commit()
-        print(f"✓ Inserted {len(skills)} skills")
+        print(f"✓ Added {len(all_skills)} skills to skills_master")
         
-        # 2. Generate and insert job roles
-        print("\n2. Generating job roles...")
-        roles = generate_job_roles()
-        for role_data in roles:
+        # Step 2: Populate Job Roles
+        print("\n[2/5] Populating job_roles...")
+        role_map = {}  # Store role_id for later use
+        for role_data in JOB_ROLES:
             role = JobRole(**role_data)
             session.add(role)
+            session.flush()  # Get the role_id
+            role_map[role_data['role_name']] = role.role_id
         session.commit()
-        print(f"✓ Inserted {len(roles)} job roles")
+        print(f"✓ Added {len(JOB_ROLES)} job roles")
         
-        # 3. Generate and insert students
-        print("\n3. Generating students...")
-        students_data = generate_students_batch(total_students)
-        skill_ids = [s.skill_id for s in session.query(SkillsMaster).all()]
-        
+        # Step 3: Populate Students
+        print("\n[3/5] Populating students...")
+        students_data = generate_students(
+            count=STUDENT_CONFIG['total'],
+            program_distribution=STUDENT_CONFIG['programs']
+        )
+        student_map = {}
         for student_data in students_data:
             student = Student(**student_data)
             session.add(student)
-            session.flush()  # Get student_id
-            
-            # Generate student skills
-            student_skills_data = generate_student_skills(
-                student.student_id,
-                student.year_of_study,
-                skill_ids
-            )
-            
-            for skill_data in student_skills_data:
+            session.flush()
+            student_map[student.student_id] = student
+        session.commit()
+        print(f"✓ Added {len(students_data)} students")
+        
+        # Step 4: Populate Student Skills
+        print("\n[4/5] Populating student_skills...")
+        total_skill_records = 0
+        for student_id, student in student_map.items():
+            skills = generate_student_skills(student_id, student.year_of_study, all_skills)
+            for skill_data in skills:
                 student_skill = StudentSkills(**skill_data)
                 session.add(student_skill)
-        
+                total_skill_records += 1
         session.commit()
-        print(f"✓ Inserted {len(students_data)} students with their skills")
+        print(f"✓ Added {total_skill_records} student-skill mappings")
         
-        # 4. Generate job role skills (placeholder - will be implemented in Phase 2)
-        print("\n4. Job role skills will be populated in Phase 2...")
+        # Step 5: Populate Job Role Skills (simplified for MVP)
+        print("\n[5/5] Populating job_role_skills...")
+        # This will be populated with role-specific requirements
+        # For MVP, we'll add basic requirements (to be expanded)
+        print("⚠ Job role skills will be populated in next phase")
         
-        print("\n✓ Database population completed successfully!")
+        print("\n" + "=" * 60)
+        print("✓ DATABASE POPULATION COMPLETE!")
+        print("=" * 60)
+        print(f"  Students: {len(students_data)}")
+        print(f"  Skills: {len(all_skills)}")
+        print(f"  Student-Skill Mappings: {total_skill_records}")
+        print(f"  Job Roles: {len(JOB_ROLES)}")
         
     except Exception as e:
         session.rollback()
-        print(f"\n✗ Error during population: {e}")
+        print(f"\n✗ Error populating database: {e}")
         raise
     finally:
         session.close()
 
 
 if __name__ == "__main__":
-    import sys
-    
-    total = 500  # MVP default
-    if len(sys.argv) > 1:
-        total = int(sys.argv[1])
-    
-    populate_database(total)
+    populate_database()
 

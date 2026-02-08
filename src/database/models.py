@@ -1,16 +1,16 @@
 """
-SQLAlchemy ORM models for the placement analytics system
+SQLAlchemy ORM models for Placement Analytics System
 """
-from sqlalchemy import Column, Integer, String, DECIMAL, Boolean, Date, TIMESTAMP, ForeignKey, CheckConstraint
+from sqlalchemy import Column, Integer, String, DECIMAL, Boolean, Date, TIMESTAMP, ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from datetime import datetime
 
 Base = declarative_base()
 
 
 class Student(Base):
-    """Student information table"""
+    """Student table model"""
     __tablename__ = 'students'
     
     student_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -20,39 +20,31 @@ class Student(Base):
     year_of_study = Column(Integer)
     enrollment_year = Column(Integer, nullable=False)
     target_role = Column(String(100))
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    
-    # Relationships
-    skills = relationship("StudentSkills", back_populates="student", cascade="all, delete-orphan")
-    readiness_scores = relationship("MarketReadinessScores", back_populates="student", cascade="all, delete-orphan")
+    created_at = Column(TIMESTAMP, default=func.now())
     
     __table_args__ = (
-        CheckConstraint("program IN ('BBA', 'BCA', 'B.Com')", name='check_program'),
-        CheckConstraint("year_of_study BETWEEN 1 AND 4", name='check_year'),
+        CheckConstraint('program IN (\'BBA\', \'BCA\', \'B.Com\')', name='check_program'),
+        CheckConstraint('year_of_study BETWEEN 1 AND 4', name='check_year'),
     )
 
 
 class SkillsMaster(Base):
-    """Master skills catalog"""
+    """Skills master table model"""
     __tablename__ = 'skills_master'
     
     skill_id = Column(Integer, primary_key=True, autoincrement=True)
     skill_name = Column(String(100), unique=True, nullable=False)
     category = Column(String(50), nullable=False)
     subcategory = Column(String(50))
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    
-    # Relationships
-    student_skills = relationship("StudentSkills", back_populates="skill", cascade="all, delete-orphan")
-    job_role_skills = relationship("JobRoleSkills", back_populates="skill", cascade="all, delete-orphan")
+    created_at = Column(TIMESTAMP, default=func.now())
     
     __table_args__ = (
-        CheckConstraint("category IN ('Technical', 'Business', 'Design', 'Soft Skills')", name='check_category'),
+        CheckConstraint('category IN (\'Technical\', \'Business\', \'Design\', \'Soft Skills\')', name='check_category'),
     )
 
 
 class StudentSkills(Base):
-    """Student-skill mappings with proficiency levels"""
+    """Student skills junction table"""
     __tablename__ = 'student_skills'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -62,37 +54,29 @@ class StudentSkills(Base):
     proficiency_score = Column(DECIMAL(3, 2))
     acquisition_date = Column(Date, nullable=False)
     source = Column(String(50))
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    
-    # Relationships
-    student = relationship("Student", back_populates="skills")
-    skill = relationship("SkillsMaster", back_populates="student_skills")
+    created_at = Column(TIMESTAMP, default=func.now())
     
     __table_args__ = (
-        CheckConstraint("proficiency_level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')", name='check_proficiency'),
-        CheckConstraint("proficiency_score BETWEEN 0 AND 1", name='check_proficiency_score'),
-        CheckConstraint("source IN ('Course', 'Certification', 'Project', 'Workshop')", name='check_source'),
-        {'extend_existing': True},
+        UniqueConstraint('student_id', 'skill_id', name='unique_student_skill'),
+        CheckConstraint('proficiency_level IN (\'Beginner\', \'Intermediate\', \'Advanced\', \'Expert\')', name='check_proficiency'),
+        CheckConstraint('proficiency_score BETWEEN 0 AND 1', name='check_proficiency_score'),
+        CheckConstraint('source IN (\'Course\', \'Certification\', \'Project\', \'Workshop\')', name='check_source'),
     )
 
 
 class JobRole(Base):
-    """Available job roles"""
+    """Job roles table model"""
     __tablename__ = 'job_roles'
     
     role_id = Column(Integer, primary_key=True, autoincrement=True)
     role_name = Column(String(100), unique=True, nullable=False)
     role_category = Column(String(50))
     description = Column(String)
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    
-    # Relationships
-    required_skills = relationship("JobRoleSkills", back_populates="role", cascade="all, delete-orphan")
-    readiness_scores = relationship("MarketReadinessScores", back_populates="role", cascade="all, delete-orphan")
+    created_at = Column(TIMESTAMP, default=func.now())
 
 
 class JobRoleSkills(Base):
-    """Required skills for each job role"""
+    """Job role skills requirements table"""
     __tablename__ = 'job_role_skills'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -102,19 +86,14 @@ class JobRoleSkills(Base):
     importance_weight = Column(DECIMAL(3, 2), default=1.0)
     is_core_skill = Column(Boolean, default=False)
     
-    # Relationships
-    role = relationship("JobRole", back_populates="required_skills")
-    skill = relationship("SkillsMaster", back_populates="job_role_skills")
-    
     __table_args__ = (
-        CheckConstraint("required_proficiency IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')", name='check_required_proficiency'),
-        CheckConstraint("importance_weight BETWEEN 0 AND 1", name='check_importance_weight'),
-        {'extend_existing': True},
+        UniqueConstraint('role_id', 'skill_id', name='unique_role_skill'),
+        CheckConstraint('importance_weight BETWEEN 0 AND 1', name='check_weight'),
     )
 
 
 class MarketReadinessScores(Base):
-    """Calculated market readiness scores"""
+    """Market readiness scores table"""
     __tablename__ = 'market_readiness_scores'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -125,15 +104,11 @@ class MarketReadinessScores(Base):
     required_skills_count = Column(Integer, default=0)
     skill_gap_count = Column(Integer, default=0)
     readiness_level = Column(String(20))
-    calculated_at = Column(TIMESTAMP, server_default=func.now())
-    
-    # Relationships
-    student = relationship("Student", back_populates="readiness_scores")
-    role = relationship("JobRole", back_populates="readiness_scores")
+    calculated_at = Column(TIMESTAMP, default=func.now())
     
     __table_args__ = (
-        CheckConstraint("readiness_score BETWEEN 0 AND 100", name='check_readiness_score'),
-        CheckConstraint("readiness_level IN ('Ready', 'Developing', 'Entry-Level')", name='check_readiness_level'),
-        {'extend_existing': True},
+        UniqueConstraint('student_id', 'role_id', name='unique_student_role'),
+        CheckConstraint('readiness_score BETWEEN 0 AND 100', name='check_score'),
+        CheckConstraint('readiness_level IN (\'Ready\', \'Developing\', \'Entry-Level\')', name='check_level'),
     )
 

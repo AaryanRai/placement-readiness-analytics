@@ -1,40 +1,16 @@
 """
-Database initialization script
-Creates all tables in the PostgreSQL database
+Initialize database: Create all tables
 """
-from src.database.connection import engine
+from src.database.connection import create_tables, engine
 from src.database.models import Base
 
-
-def init_database():
-    """
-    Create all database tables.
-    This will create the tables if they don't exist.
-    """
+def main():
+    """Create all database tables"""
     print("Creating database tables...")
-    Base.metadata.create_all(bind=engine)
+    create_tables()
     print("✓ Database tables created successfully!")
-
-
-def drop_database():
-    """
-    Drop all database tables.
-    WARNING: This will delete all data!
-    """
-    print("Dropping all database tables...")
-    Base.metadata.drop_all(bind=engine)
-    print("✓ All tables dropped!")
-
+    print(f"Database: {engine.url}")
 
 if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "--drop":
-        confirm = input("Are you sure you want to drop all tables? (yes/no): ")
-        if confirm.lower() == "yes":
-            drop_database()
-        else:
-            print("Operation cancelled.")
-    else:
-        init_database()
+    main()
 

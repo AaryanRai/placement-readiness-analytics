@@ -32,40 +32,37 @@ ENV/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Environment variables
 .env
 .env.local
-
-# Jupyter Notebook
-.ipynb_checkpoints
-*.ipynb
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
 
-# Model files (large)
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Models
 models/*.pkl
 models/*.joblib
-models/*.h5
 
 # Logs
 *.log
 logs/
 
-# Streamlit
-.streamlit/
+# OS
+.DS_Store
+Thumbs.db
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
-.tox/
 
-# OS
-.DS_Store
-Thumbs.db
+# Streamlit
+.streamlit/
 

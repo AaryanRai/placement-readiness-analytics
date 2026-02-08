@@ -35,7 +35,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 def main():
     session = get_db_session()
     
@@ -102,9 +101,7 @@ def main():
             Student.program,
             func.avg(MarketReadinessScores.readiness_score).label('avg_score'),
             func.count(Student.student_id).label('student_count')
-        ).join(
-            MarketReadinessScores, Student.student_id == MarketReadinessScores.student_id
-        ).group_by(Student.program).all()
+        ).join(MarketReadinessScores, Student.student_id == MarketReadinessScores.student_id).group_by(Student.program).all()
         
         if program_stats:
             df_program = pd.DataFrame(program_stats, columns=['Program', 'Avg Readiness', 'Students'])
@@ -143,15 +140,14 @@ def main():
         
         if top_students:
             df_top = pd.DataFrame(top_students, columns=['Name', 'Program', 'Year', 'Best Role', 'Score'])
-            df_top['Score'] = df_top['Score'].apply(lambda x: f"{float(x):.1f}%")
+            df_top['Score'] = df_top['Score'].apply(lambda x: f"{x:.1f}%")
             
             st.dataframe(df_top, use_container_width=True, hide_index=True)
         else:
-            st.info("No student data available. Please populate the database first.")
+            st.info("No student data available.")
     
     finally:
         session.close()
-
 
 if __name__ == "__main__":
     main()

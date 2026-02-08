@@ -1,4 +1,4 @@
 """
-Streamlit dashboard for placement analytics
+Streamlit dashboard for Placement Analytics
 """
 

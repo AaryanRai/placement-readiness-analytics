@@ -1,179 +1,121 @@
 """
-Generate skills data and job role requirements
+Generate skills master data and student-skill mappings
 """
-import json
-import os
 from typing import List, Dict
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
-# Load skill taxonomy
-SKILL_TAXONOMY_PATH = os.path.join(os.path.dirname(__file__), '../../data/skill_taxonomy.json')
+# Skill taxonomy (50 skills for MVP)
+SKILLS_TAXONOMY = {
+    'Technical': {
+        'Programming': ['Python', 'JavaScript', 'Java', 'C++', 'SQL', 'R'],
+        'Data': ['Pandas', 'NumPy', 'Excel', 'Tableau', 'Power BI', 'Statistics'],
+        'Web': ['React', 'Node.js', 'HTML/CSS', 'Django', 'Flask'],
+        'Database': ['PostgreSQL', 'MySQL', 'MongoDB'],
+        'Cloud': ['AWS', 'Azure', 'Docker']
+    },
+    'Business': {
+        'Analysis': ['Business Intelligence', 'Financial Modeling'],
+        'Marketing': ['SEO', 'Google Ads', 'Social Media Marketing'],
+        'Management': ['Project Management', 'Agile']
+    },
+    'Design': {
+        'UI/UX': ['Figma', 'Wireframing', 'User Research'],
+        'Graphics': ['Photoshop', 'Canva']
+    },
+    'Soft Skills': {
+        'General': ['Communication', 'Teamwork', 'Leadership', 'Problem Solving']
+    }
+}
+
+PROFICIENCY_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
+PROFICIENCY_SCORES = {
+    'Beginner': 0.25,
+    'Intermediate': 0.50,
+    'Advanced': 0.75,
+    'Expert': 1.00
+}
+
+SOURCES = ['Course', 'Certification', 'Project', 'Workshop']
 
 
-def load_skill_taxonomy() -> Dict:
-    """Load skills from taxonomy JSON file."""
-    with open(SKILL_TAXONOMY_PATH, 'r') as f:
-        return json.load(f)
-
-
-def generate_skills_master() -> List[Dict]:
+def get_all_skills() -> List[Dict]:
     """
-    Generate skills_master records from taxonomy.
+    Get all skills from taxonomy as a flat list.
     
     Returns:
-        List of skill dictionaries
+        List of skill dictionaries with category and subcategory
     """
-    taxonomy = load_skill_taxonomy()
     skills = []
     skill_id = 1
     
-    for category, subcategories in taxonomy.items():
-        if isinstance(subcategories, dict):
-            # Has subcategories (Technical, Business, Design)
-            for subcategory, skill_list in subcategories.items():
-                for skill_name in skill_list:
-                    skills.append({
-                        'skill_id': skill_id,
-                        'skill_name': skill_name,
-                        'category': category,
-                        'subcategory': subcategory
-                    })
-                    skill_id += 1
-        else:
-            # No subcategories (Soft Skills)
-            for skill_name in subcategories:
+    for category, subcategories in SKILLS_TAXONOMY.items():
+        for subcategory, skill_names in subcategories.items():
+            for skill_name in skill_names:
                 skills.append({
                     'skill_id': skill_id,
                     'skill_name': skill_name,
                     'category': category,
-                    'subcategory': None
+                    'subcategory': subcategory
                 })
                 skill_id += 1
     
     return skills
 
 
-def generate_job_roles() -> List[Dict]:
+def generate_student_skills(student_id: int, year_of_study: int, all_skills: List[Dict]) -> List[Dict]:
     """
-    Generate job roles for MVP (5 roles).
-    
-    Returns:
-        List of job role dictionaries
-    """
-    roles = [
-        {
-            'role_id': 1,
-            'role_name': 'Data Analyst',
-            'role_category': 'Technical',
-            'description': 'Analyze data to help organizations make informed decisions'
-        },
-        {
-            'role_id': 2,
-            'role_name': 'Full-Stack Developer',
-            'role_category': 'Technical',
-            'description': 'Develop both frontend and backend applications'
-        },
-        {
-            'role_id': 3,
-            'role_name': 'Digital Marketer',
-            'role_category': 'Business',
-            'description': 'Promote brands through digital channels'
-        },
-        {
-            'role_id': 4,
-            'role_name': 'Business Analyst',
-            'role_category': 'Business',
-            'description': 'Bridge gap between business needs and technical solutions'
-        },
-        {
-            'role_id': 5,
-            'role_name': 'UX/UI Designer',
-            'role_category': 'Design',
-            'description': 'Design user interfaces and experiences'
-        }
-    ]
-    return roles
-
-
-def generate_job_role_skills() -> List[Dict]:
-    """
-    Generate job role skill requirements.
-    This is a simplified version - will be expanded in Phase 2.
-    
-    Returns:
-        List of job role skill requirement dictionaries
-    """
-    # This will be populated with actual requirements in Phase 2
-    # For now, return empty list as placeholder
-    return []
-
-
-def generate_student_skills(student_id: int, year_of_study: int, skill_pool: List[int]) -> List[Dict]:
-    """
-    Generate student skills based on year of study.
-    
-    Skill acquisition patterns:
-    - Year 1: 3-8 skills
-    - Year 2: 8-15 skills
-    - Year 3: 15-25 skills
-    - Year 4: 20-35 skills
+    Generate skill assignments for a student based on their year of study.
     
     Args:
         student_id: Student ID
-        year_of_study: Year of study (1-4)
-        skill_pool: List of available skill IDs
-        
-    Returns:
-        List of student skill dictionaries
-    """
-    skills = []
-    proficiency_levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
-    proficiency_scores = {
-        'Beginner': 0.25,
-        'Intermediate': 0.50,
-        'Advanced': 0.75,
-        'Expert': 1.00
-    }
-    sources = ['Course', 'Certification', 'Project', 'Workshop']
+        year_of_study: Current year (1-4)
+        all_skills: List of all available skills
     
-    # Determine number of skills based on year
+    Returns:
+        List of student-skill mappings
+    """
+    # Skill count ranges by year (from PRD)
     skill_ranges = {
         1: (3, 8),
         2: (8, 15),
         3: (15, 25),
         4: (20, 35)
     }
-    min_skills, max_skills = skill_ranges[year_of_study]
+    
+    min_skills, max_skills = skill_ranges.get(year_of_study, (5, 15))
     num_skills = random.randint(min_skills, max_skills)
     
     # Select random skills
-    selected_skills = random.sample(skill_pool, min(num_skills, len(skill_pool)))
+    selected_skills = random.sample(all_skills, min(num_skills, len(all_skills)))
     
-    # Generate acquisition dates (spread over enrollment period)
-    current_date = datetime.now()
-    enrollment_date = datetime(current_date.year - (year_of_study - 1), 1, 1)
+    student_skills = []
+    base_date = datetime(2020, 1, 1)
     
-    for skill_id in selected_skills:
-        # Proficiency increases with time
-        proficiency = random.choices(
-            proficiency_levels,
-            weights=[0.4, 0.3, 0.2, 0.1] if year_of_study <= 2 else [0.2, 0.3, 0.3, 0.2]
-        )[0]
+    for skill in selected_skills:
+        # Proficiency increases with year of study
+        proficiency_weights = {
+            1: [0.6, 0.3, 0.1, 0.0],  # Mostly Beginner
+            2: [0.3, 0.5, 0.2, 0.0],  # Mostly Intermediate
+            3: [0.1, 0.4, 0.4, 0.1],  # Mix of Intermediate/Advanced
+            4: [0.0, 0.2, 0.5, 0.3]   # Mostly Advanced/Expert
+        }
         
-        # Random acquisition date between enrollment and now
-        days_since_enrollment = (current_date - enrollment_date).days
-        acquisition_days = random.randint(0, days_since_enrollment)
-        acquisition_date = enrollment_date + timedelta(days=acquisition_days)
+        weights = proficiency_weights.get(year_of_study, [0.25, 0.25, 0.25, 0.25])
+        proficiency_level = random.choices(PROFICIENCY_LEVELS, weights=weights)[0]
         
-        skills.append({
+        # Acquisition date: earlier for lower proficiency, later for higher
+        months_ago = random.randint(1, (year_of_study * 12))
+        acquisition_date = base_date + timedelta(days=30 * months_ago)
+        
+        student_skills.append({
             'student_id': student_id,
-            'skill_id': skill_id,
-            'proficiency_level': proficiency,
-            'proficiency_score': proficiency_scores[proficiency],
+            'skill_id': skill['skill_id'],
+            'proficiency_level': proficiency_level,
+            'proficiency_score': PROFICIENCY_SCORES[proficiency_level],
             'acquisition_date': acquisition_date.date(),
-            'source': random.choice(sources)
+            'source': random.choice(SOURCES)
         })
     
-    return skills
+    return student_skills
 
