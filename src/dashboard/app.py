@@ -828,6 +828,95 @@ def render_data_table():
         
         st.caption(f"Showing {len(filtered_df)} of {len(df_students)} students (each student shown once with their best readiness score)")
 
+def run_complete_pipeline():
+    """Run the complete pipeline: data generation, scoring, and model training."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    try:
+        # Step 1: Clear and regenerate data
+        status_text.text("Step 1/5: Clearing existing data and generating new students...")
+        progress_bar.progress(0.1)
+        
+        result = subprocess.run(
+            [sys.executable, 'src/data_generation/populate_db.py', '--clear'],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent.parent)
+        )
+        
+        if result.returncode != 0:
+            st.error(f"Data generation failed: {result.stderr}")
+            return
+        
+        # Step 2: Calculate scores
+        status_text.text("Step 2/5: Calculating readiness scores...")
+        progress_bar.progress(0.3)
+        
+        result = subprocess.run(
+            [sys.executable, 'src/core/scoring.py'],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent.parent)
+        )
+        
+        if result.returncode != 0:
+            st.warning(f"Score calculation had issues: {result.stderr}")
+        
+        # Step 3: Train ML models
+        status_text.text("Step 3/5: Training ML models with new data...")
+        progress_bar.progress(0.5)
+        
+        result = subprocess.run(
+            [sys.executable, 'src/ml_models/train_models.py'],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent.parent)
+        )
+        
+        if result.returncode != 0:
+            st.error(f"Model training failed: {result.stderr}")
+            return
+        
+        # Step 4: Update scores with ML predictions
+        status_text.text("Step 4/5: Updating scores with ML predictions...")
+        progress_bar.progress(0.8)
+        
+        result = subprocess.run(
+            [sys.executable, 'src/core/scoring_ml.py'],
+            capture_output=True,
+            text=True,
+            cwd=str(Path(__file__).parent.parent.parent)
+        )
+        
+        if result.returncode != 0:
+            st.warning(f"ML score update had issues: {result.stderr}")
+        
+        # Step 5: Complete
+        status_text.text("Step 5/5: Pipeline complete!")
+        progress_bar.progress(1.0)
+        
+        st.success("✅ Pipeline completed successfully! Data regenerated, models retrained, and scores updated.")
+        st.info("💡 Refreshing page to show updated results...")
+        
+        # Clear cache to force reload
+        st.cache_data.clear()
+        
+        # Force page refresh
+        st.rerun()
+        
+    except Exception as e:
+        st.error(f"Pipeline error: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc())
+    finally:
+        progress_bar.empty()
+        status_text.empty()
+
 def render_ml_section():
     """Render ML predictions and model comparison section."""
     st.markdown('<div class="section-header">ML-Based Readiness Prediction System</div>', unsafe_allow_html=True)
