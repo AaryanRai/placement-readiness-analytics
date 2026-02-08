@@ -1264,6 +1264,12 @@ def main():
             ],
             label_visibility="collapsed"
         )
+        
+        st.markdown("---")
+        st.markdown("## Pipeline Control")
+        
+        if st.button("🔄 Run Complete Pipeline", type="primary", use_container_width=True):
+            run_complete_pipeline()
     
     # Render header and KPIs
     render_header()

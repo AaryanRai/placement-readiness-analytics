@@ -142,18 +142,35 @@ def populate_job_roles(session):
     session.commit()
     print("✓ Job roles populated!")
 
-def populate_students_and_skills(session, num_students=500):
-    """Populate students and their skills (idempotent)."""
+def populate_students_and_skills(session, num_students=500, clear_existing=False):
+    """Populate students and their skills (idempotent).
+    
+    Args:
+        session: Database session
+        num_students: Number of students to generate
+        clear_existing: If True, clear existing students before generating new ones
+    """
+    if clear_existing:
+        print("Clearing existing students and their data...")
+        # Delete in correct order due to foreign keys
+        session.query(StudentSkills).delete()
+        session.query(MarketReadinessScores).delete()
+        session.query(Student).delete()
+        session.commit()
+        print("  Existing data cleared.")
+    
     existing_count = session.query(Student).count()
-    if existing_count > 0:
+    if existing_count >= num_students and not clear_existing:
         print(f"  Students already exist ({existing_count} students). Skipping...")
+        print("  Use clear_existing=True to regenerate data.")
         return
     
-    print(f"Generating {num_students} students...")
+    print(f"Generating {num_students} students with realistic distributions...")
     
     taxonomy = load_skill_taxonomy()
     all_skills = flatten_skills(taxonomy)
     
+    # Generate students with realistic program distribution
     students_data = generate_students(num_students)
     
     for student_data in students_data:

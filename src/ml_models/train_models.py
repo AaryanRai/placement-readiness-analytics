@@ -66,12 +66,13 @@ def train_classifier(df: pd.DataFrame, save_path: str = None) -> DecisionTreeCla
     print(f"Training samples: {len(X_train)}")
     print(f"Test samples: {len(X_test)}")
     
-    # Train model
+    # Train model with anti-overfitting parameters
     model = DecisionTreeClassifier(
-        max_depth=10,
-        min_samples_split=20,
-        min_samples_leaf=10,
-        random_state=42,
+        max_depth=8,  # Reduced to prevent overfitting
+        min_samples_split=30,  # Increased to require more samples for splits
+        min_samples_leaf=15,  # Increased to prevent leaf nodes with few samples
+        max_features='sqrt',  # Use sqrt of features to reduce overfitting
+        random_state=None,  # Use system time for variability
         class_weight='balanced'
     )
     
@@ -131,13 +132,15 @@ def train_regressor(df: pd.DataFrame, save_path: str = None) -> RandomForestRegr
     print(f"Training samples: {len(X_train)}")
     print(f"Test samples: {len(X_test)}")
     
-    # Train model
+    # Train model with anti-overfitting parameters
     model = RandomForestRegressor(
         n_estimators=100,
-        max_depth=15,
-        min_samples_split=10,
-        min_samples_leaf=5,
-        random_state=42,
+        max_depth=12,  # Reduced to prevent overfitting
+        min_samples_split=20,  # Increased to require more samples
+        min_samples_leaf=10,  # Increased to prevent overfitting
+        max_features='sqrt',  # Use sqrt of features (default is 'auto' which is sqrt)
+        max_samples=0.8,  # Use 80% of samples per tree (bootstrap)
+        random_state=None,  # Use system time for variability
         n_jobs=-1
     )
     
