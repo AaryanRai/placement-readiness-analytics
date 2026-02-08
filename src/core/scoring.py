@@ -3,8 +3,8 @@ Market Readiness Score Calculation Engine
 """
 from decimal import Decimal
 from typing import Dict
-from sqlalchemy.orm import Session
-from src.database.models import Student, JobRole, JobRoleSkills, StudentSkills, MarketReadinessScores
+from sqlalchemy.orm import Session, joinedload
+from src.database.models import Student, JobRole, JobRoleSkills, StudentSkills, MarketReadinessScores, SkillsMaster
 from sqlalchemy import func
 
 PROFICIENCY_MAP = {
@@ -37,8 +37,10 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session) -
             'missing_skills': [{skill_name, importance_weight}]
         }
     """
-    # Get required skills for role
-    required_skills = session.query(JobRoleSkills).filter_by(role_id=role_id).all()
+    # Get required skills for role (with skill relationship loaded)
+    required_skills = session.query(JobRoleSkills).options(
+        joinedload(JobRoleSkills.skill)
+    ).filter_by(role_id=role_id).all()
     
     if not required_skills:
         return {

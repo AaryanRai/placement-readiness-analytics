@@ -3,6 +3,7 @@ SQLAlchemy ORM models for Placement Analytics System
 """
 from sqlalchemy import Column, Integer, String, DECIMAL, Boolean, Date, TIMESTAMP, ForeignKey, CheckConstraint, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 
@@ -85,6 +86,10 @@ class JobRoleSkills(Base):
     required_proficiency = Column(String(20), nullable=False)
     importance_weight = Column(DECIMAL(3, 2), default=1.0)
     is_core_skill = Column(Boolean, default=False)
+    
+    # Relationships
+    skill = relationship("SkillsMaster", backref="job_role_skills")
+    role = relationship("JobRole", backref="job_role_skills")
     
     __table_args__ = (
         UniqueConstraint('role_id', 'skill_id', name='unique_role_skill'),
