@@ -144,6 +144,12 @@ def calculate_all_scores(session: Session) -> None:
     print(f"✓ All {count} readiness scores calculated!")
 
 if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    # Add project root to Python path
+    project_root = Path(__file__).parent.parent.parent
+    sys.path.insert(0, str(project_root))
+    
     from src.database.connection import get_db_session
     session = get_db_session()
     calculate_all_scores(session)
