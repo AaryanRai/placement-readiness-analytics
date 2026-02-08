@@ -1,6 +1,7 @@
 import json
 import random
 from datetime import datetime, timedelta
+from pathlib import Path
 
 PROFICIENCY_MAP = {
     'Beginner': 0.25,
@@ -11,7 +12,11 @@ PROFICIENCY_MAP = {
 
 def load_skill_taxonomy():
     """Load skills from JSON."""
-    with open('data/skill_taxonomy.json', 'r') as f:
+    # Get project root (3 levels up from this file)
+    project_root = Path(__file__).parent.parent.parent
+    skill_file = project_root / 'data' / 'skill_taxonomy.json'
+    
+    with open(skill_file, 'r') as f:
         return json.load(f)
 
 def generate_student_skills(student, all_skills_flat):

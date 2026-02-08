@@ -48,7 +48,7 @@ def main():
     st.subheader("Cohort Overview")
     
     total_students = session.query(Student).count()
-    avg_readiness = session.query(func.avg(MarketReadinessScores.readiness_score)).scalar()
+    avg_readiness = session.query(func.avg(MarketReadinessScores.readiness_score)).scalar() or 0.0
     ready_students = session.query(Student).join(MarketReadinessScores).filter(
         MarketReadinessScores.readiness_level == 'Ready'
     ).distinct().count()
@@ -71,24 +71,27 @@ def main():
         func.count(MarketReadinessScores.id)
     ).group_by(MarketReadinessScores.readiness_level).all()
     
-    df_readiness = pd.DataFrame(readiness_counts, columns=['Level', 'Count'])
-    
-    fig_pie = px.pie(
-        df_readiness,
-        values='Count',
-        names='Level',
-        color='Level',
-        color_discrete_map={
-            'Ready': '#28a745',
-            'Developing': '#ffc107',
-            'Entry-Level': '#dc3545'
-        },
-        hole=0.3  # Donut chart
-    )
-    fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-    fig_pie.update_layout(height=400)
-    
-    st.plotly_chart(fig_pie, use_container_width=True)
+    if readiness_counts:
+        df_readiness = pd.DataFrame(readiness_counts, columns=['Level', 'Count'])
+        
+        fig_pie = px.pie(
+            df_readiness,
+            values='Count',
+            names='Level',
+            color='Level',
+            color_discrete_map={
+                'Ready': '#28a745',
+                'Developing': '#ffc107',
+                'Entry-Level': '#dc3545'
+            },
+            hole=0.3  # Donut chart
+        )
+        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        fig_pie.update_layout(height=400)
+        
+        st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.info("No readiness data available. Please run the scoring algorithm first.")
     
     st.divider()
     
@@ -101,25 +104,28 @@ def main():
         func.count(func.distinct(Student.student_id)).label('student_count')
     ).join(MarketReadinessScores).group_by(Student.program).all()
     
-    df_program = pd.DataFrame(program_stats, columns=['Program', 'Avg Readiness', 'Students'])
-    
-    fig_bar = px.bar(
-        df_program,
-        x='Program',
-        y='Avg Readiness',
-        text='Avg Readiness',
-        color='Avg Readiness',
-        color_continuous_scale='Blues',
-        labels={'Avg Readiness': 'Average Readiness (%)'}
-    )
-    fig_bar.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
-    fig_bar.update_layout(height=400, showlegend=False)
-    
-    st.plotly_chart(fig_bar, use_container_width=True)
-    
-    # Show student counts
-    for _, row in df_program.iterrows():
-        st.caption(f"{row['Program']}: {row['Students']} students")
+    if program_stats:
+        df_program = pd.DataFrame(program_stats, columns=['Program', 'Avg Readiness', 'Students'])
+        
+        fig_bar = px.bar(
+            df_program,
+            x='Program',
+            y='Avg Readiness',
+            text='Avg Readiness',
+            color='Avg Readiness',
+            color_continuous_scale='Blues',
+            labels={'Avg Readiness': 'Average Readiness (%)'}
+        )
+        fig_bar.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+        fig_bar.update_layout(height=400, showlegend=False)
+        
+        st.plotly_chart(fig_bar, use_container_width=True)
+        
+        # Show student counts
+        for _, row in df_program.iterrows():
+            st.caption(f"{row['Program']}: {row['Students']} students")
+    else:
+        st.info("No program comparison data available.")
     
     st.divider()
     
@@ -162,18 +168,21 @@ def main():
             MarketReadinessScores.readiness_score.desc()
         ).limit(10).all()
     
-    df_top = pd.DataFrame(top_students, columns=['Name', 'Program', 'Year', 'Target Role', 'Score'])
-    df_top['Score'] = df_top['Score'].apply(lambda x: f"{x:.1f}%")
-    df_top.index = range(1, len(df_top) + 1)  # 1-indexed
-    
-    st.dataframe(
-        df_top,
-        use_container_width=True,
-        column_config={
-            "Name": st.column_config.TextColumn("Student Name", width="medium"),
-            "Score": st.column_config.TextColumn("Readiness", width="small")
-        }
-    )
+    if top_students:
+        df_top = pd.DataFrame(top_students, columns=['Name', 'Program', 'Year', 'Target Role', 'Score'])
+        df_top['Score'] = df_top['Score'].apply(lambda x: f"{x:.1f}%")
+        df_top.index = range(1, len(df_top) + 1)  # 1-indexed
+        
+        st.dataframe(
+            df_top,
+            use_container_width=True,
+            column_config={
+                "Name": st.column_config.TextColumn("Student Name", width="medium"),
+                "Score": st.column_config.TextColumn("Readiness", width="small")
+            }
+        )
+    else:
+        st.info("No student data available.")
     
     session.close()
 

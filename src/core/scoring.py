@@ -124,17 +124,32 @@ def calculate_all_scores(session: Session) -> None:
         for role in roles:
             result = calculate_readiness_score(student.student_id, role.role_id, session)
             
-            # Insert score record
-            score_record = MarketReadinessScores(
+            # Check if record exists (upsert logic)
+            existing = session.query(MarketReadinessScores).filter_by(
                 student_id=student.student_id,
-                role_id=role.role_id,
-                readiness_score=result['readiness_score'],
-                readiness_level=result['readiness_level'],
-                matched_skills_count=result['matched_skills_count'],
-                required_skills_count=result['required_skills_count'],
-                skill_gap_count=result['skill_gap_count']
-            )
-            session.add(score_record)
+                role_id=role.role_id
+            ).first()
+            
+            if existing:
+                # Update existing record
+                existing.readiness_score = result['readiness_score']
+                existing.readiness_level = result['readiness_level']
+                existing.matched_skills_count = result['matched_skills_count']
+                existing.required_skills_count = result['required_skills_count']
+                existing.skill_gap_count = result['skill_gap_count']
+            else:
+                # Insert new record
+                score_record = MarketReadinessScores(
+                    student_id=student.student_id,
+                    role_id=role.role_id,
+                    readiness_score=result['readiness_score'],
+                    readiness_level=result['readiness_level'],
+                    matched_skills_count=result['matched_skills_count'],
+                    required_skills_count=result['required_skills_count'],
+                    skill_gap_count=result['skill_gap_count']
+                )
+                session.add(score_record)
+            
             count += 1
             
             if count % 100 == 0:
