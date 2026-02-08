@@ -49,6 +49,7 @@ ENV/
 # Models
 models/*.pkl
 models/*.joblib
+!models/.gitkeep
 
 # Logs
 *.log

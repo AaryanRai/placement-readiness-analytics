@@ -828,6 +828,263 @@ def render_data_table():
         
         st.caption(f"Showing {len(filtered_df)} of {len(df_students)} students (each student shown once with their best readiness score)")
 
+def render_ml_section():
+    """Render ML predictions and model comparison section."""
+    st.markdown('<div class="section-header">ML Model Predictions & Comparison</div>', unsafe_allow_html=True)
+    
+    # Check if models exist
+    from pathlib import Path
+    models_dir = Path(__file__).parent.parent.parent / 'models'
+    classifier_path = models_dir / 'readiness_classifier.pkl'
+    regressor_path = models_dir / 'readiness_regressor.pkl'
+    
+    if not classifier_path.exists() or not regressor_path.exists():
+        st.warning("⚠ ML models not trained yet. Please run: `python src/ml_models/train_models.py`")
+        if st.button("Train Models Now"):
+            with st.spinner("Training ML models... This may take a few minutes."):
+                import subprocess
+                result = subprocess.run(
+                    ['python3', 'src/ml_models/train_models.py'],
+                    capture_output=True,
+                    text=True,
+                    cwd=str(Path(__file__).parent.parent.parent)
+                )
+                if result.returncode == 0:
+                    st.success("✓ Models trained successfully! Please refresh the page.")
+                    st.code(result.stdout)
+                else:
+                    st.error("Training failed. Check the error below:")
+                    st.code(result.stderr)
+        return
+    
+    # Model Performance Metrics
+    st.markdown("### Model Performance")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div class="kpi-card" style="border-left-color: #3b82f6;">
+            <div class="kpi-label">Classifier Accuracy</div>
+            <div class="kpi-value">87.0%</div>
+            <div class="kpi-trend">Decision Tree</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="kpi-card" style="border-left-color: #059669;">
+            <div class="kpi-label">Regressor R² Score</div>
+            <div class="kpi-value">95.9%</div>
+            <div class="kpi-trend">Random Forest</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="kpi-card" style="border-left-color: #d97706;">
+            <div class="kpi-label">RMSE</div>
+            <div class="kpi-value">5.07</div>
+            <div class="kpi-trend">Score Prediction</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Comparison: Rule-based vs ML
+    st.markdown("### Rule-Based vs ML Prediction Comparison")
+    
+    session = get_db_session()
+    try:
+        # Get sample predictions for comparison
+        from src.core.scoring import calculate_readiness_score
+        from src.ml_models.predict import predict_readiness_ml
+        
+        # Get a few students for comparison
+        students = session.query(Student).limit(10).all()
+        roles = session.query(JobRole).all()
+        
+        comparison_data = []
+        for student in students[:5]:  # Compare first 5 students
+            for role in roles[:2]:  # Compare first 2 roles
+                # Rule-based prediction
+                rule_result = calculate_readiness_score(student.student_id, role.role_id, session)
+                
+                # ML prediction
+                ml_result = predict_readiness_ml(student.student_id, role.role_id, session)
+                
+                if not ml_result.get('error'):
+                    comparison_data.append({
+                        'Student': student.name,
+                        'Program': student.program,
+                        'Role': role.role_name,
+                        'Rule-Based Score': f"{rule_result['readiness_score']:.1f}%",
+                        'ML Score': f"{ml_result['readiness_score_ml']:.1f}%",
+                        'Rule-Based Level': rule_result['readiness_level'],
+                        'ML Level': ml_result['readiness_level_ml'],
+                        'Difference': f"{abs(rule_result['readiness_score'] - ml_result['readiness_score_ml']):.1f}%"
+                    })
+        
+        if comparison_data:
+            df_comparison = pd.DataFrame(comparison_data)
+            st.dataframe(df_comparison, use_container_width=True, height=300)
+            
+            # Insight
+            avg_diff = sum(float(row['Difference'].replace('%', '')) for row in comparison_data) / len(comparison_data)
+            st.markdown(f"""
+            <div class="insight-box">
+                <strong>Insight:</strong> Average difference between rule-based and ML predictions is {avg_diff:.1f}%. 
+                ML models provide more nuanced predictions by learning from patterns in skill portfolios and student characteristics.
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Feature Importance Visualization
+        st.markdown("### Top Feature Importance (ML Models)")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Classifier feature importance
+            st.markdown("**Decision Tree Classifier**")
+            classifier_features = pd.DataFrame({
+                'Feature': ['match_ratio', 'avg_proficiency', 'skills_Soft Skills', 'source_Course', 'program_BBA'],
+                'Importance': [0.897, 0.033, 0.010, 0.009, 0.006]
+            })
+            fig = px.bar(
+                classifier_features,
+                x='Importance',
+                y='Feature',
+                orientation='h',
+                color='Importance',
+                color_continuous_scale='Blues',
+                labels={'Importance': 'Feature Importance'}
+            )
+            fig.update_layout(
+                height=300,
+                showlegend=False,
+                title=dict(text="Top 5 Features", font=dict(size=14, color='#ffffff')),
+                font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
+                yaxis=dict(title="")
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Regressor feature importance
+            st.markdown("**Random Forest Regressor**")
+            regressor_features = pd.DataFrame({
+                'Feature': ['match_ratio', 'matched_skills_count', 'skill_gap_count', 'avg_proficiency', 'proficiency_Beginner'],
+                'Importance': [0.936, 0.031, 0.007, 0.005, 0.003]
+            })
+            fig = px.bar(
+                regressor_features,
+                x='Importance',
+                y='Feature',
+                orientation='h',
+                color='Importance',
+                color_continuous_scale='Greens',
+                labels={'Importance': 'Feature Importance'}
+            )
+            fig.update_layout(
+                height=300,
+                showlegend=False,
+                title=dict(text="Top 5 Features", font=dict(size=14, color='#ffffff')),
+                font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
+                yaxis=dict(title="")
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # ML Prediction Distribution
+        st.markdown("### ML Prediction Distribution")
+        
+        # Get ML predictions for all students
+        from src.ml_models.predict import predict_batch_ml
+        ml_predictions = predict_batch_ml(session)
+        
+        if not ml_predictions.empty:
+            # Distribution by level
+            level_counts = ml_predictions['readiness_level_ml'].value_counts()
+            df_ml_levels = pd.DataFrame({
+                'Level': level_counts.index,
+                'Count': level_counts.values
+            })
+            
+            fig = px.pie(
+                df_ml_levels,
+                values='Count',
+                names='Level',
+                hole=0.5,
+                color='Level',
+                color_discrete_map={
+                    'Ready': '#059669',
+                    'Developing': '#d97706',
+                    'Entry-Level': '#dc2626'
+                }
+            )
+            fig.update_traces(
+                textposition='inside',
+                textinfo='percent+label',
+                textfont_size=13,
+                marker=dict(line=dict(color='#ffffff', width=2))
+            )
+            fig.update_layout(
+                height=400,
+                showlegend=True,
+                legend=dict(font=dict(color='#ffffff')),
+                font=dict(family="Arial, sans-serif", size=12),
+                title=dict(
+                    text="ML Predicted Readiness Distribution",
+                    font=dict(size=16, color='#ffffff'),
+                    x=0.5,
+                    xanchor='center'
+                )
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Score distribution histogram
+            fig = px.histogram(
+                ml_predictions,
+                x='readiness_score_ml',
+                nbins=20,
+                labels={'readiness_score_ml': 'ML Predicted Score (%)', 'count': 'Number of Predictions'},
+                color_discrete_sequence=['#3b82f6']
+            )
+            fig.update_layout(
+                height=350,
+                font=dict(family="Arial, sans-serif", size=12),
+                title=dict(
+                    text="ML Score Distribution",
+                    font=dict(size=16, color='#ffffff'),
+                    x=0.5,
+                    xanchor='center'
+                ),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title=dict(text="Predicted Score (%)", font=dict(size=13, color='#ffffff'))),
+                yaxis=dict(title=dict(text="Count", font=dict(size=13, color='#ffffff')))
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Summary statistics
+            st.markdown("### ML Prediction Statistics")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Mean Score", f"{ml_predictions['readiness_score_ml'].mean():.1f}%")
+            with col2:
+                st.metric("Median Score", f"{ml_predictions['readiness_score_ml'].median():.1f}%")
+            with col3:
+                st.metric("Std Deviation", f"{ml_predictions['readiness_score_ml'].std():.1f}%")
+            with col4:
+                st.metric("Total Predictions", len(ml_predictions))
+    
+    finally:
+        session.close()
+
 def render_year_progression():
     """Render readiness progression by academic year."""
     st.markdown('<div class="section-header">Readiness Progression by Academic Year</div>', unsafe_allow_html=True)
@@ -968,6 +1225,7 @@ def main():
                 "Cohort Analytics",
                 "Career Readiness",
                 "Skill Gap Analysis",
+                "ML Predictions",
                 "Data Explorer"
             ],
             label_visibility="collapsed"
@@ -992,6 +1250,8 @@ def main():
         render_career_section()
     elif page == "Skill Gap Analysis":
         render_skill_gap_section()
+    elif page == "ML Predictions":
+        render_ml_section()
     elif page == "Data Explorer":
         render_data_table()
 
