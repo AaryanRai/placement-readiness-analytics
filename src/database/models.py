@@ -1,13 +1,10 @@
 """
 SQLAlchemy ORM models for Placement Analytics System
 """
-from sqlalchemy import Column, Integer, String, DECIMAL, Boolean, Date, TIMESTAMP, ForeignKey, CheckConstraint, UniqueConstraint
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, DECIMAL, Boolean, Date, TIMESTAMP, ForeignKey, CheckConstraint, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
-
-Base = declarative_base()
+from src.database.connection import Base
 
 
 class Student(Base):
@@ -26,6 +23,8 @@ class Student(Base):
     __table_args__ = (
         CheckConstraint('program IN (\'BBA\', \'BCA\', \'B.Com\')', name='check_program'),
         CheckConstraint('year_of_study BETWEEN 1 AND 4', name='check_year'),
+        Index('idx_students_program', 'program'),
+        Index('idx_students_year', 'year_of_study'),
     )
 
 
@@ -41,6 +40,7 @@ class SkillsMaster(Base):
     
     __table_args__ = (
         CheckConstraint('category IN (\'Technical\', \'Business\', \'Design\', \'Soft Skills\')', name='check_category'),
+        Index('idx_skills_category', 'category'),
     )
 
 
@@ -62,6 +62,8 @@ class StudentSkills(Base):
         CheckConstraint('proficiency_level IN (\'Beginner\', \'Intermediate\', \'Advanced\', \'Expert\')', name='check_proficiency'),
         CheckConstraint('proficiency_score BETWEEN 0 AND 1', name='check_proficiency_score'),
         CheckConstraint('source IN (\'Course\', \'Certification\', \'Project\', \'Workshop\')', name='check_source'),
+        Index('idx_student_skills_student', 'student_id'),
+        Index('idx_student_skills_skill', 'skill_id'),
     )
 
 
@@ -94,6 +96,7 @@ class JobRoleSkills(Base):
     __table_args__ = (
         UniqueConstraint('role_id', 'skill_id', name='unique_role_skill'),
         CheckConstraint('importance_weight BETWEEN 0 AND 1', name='check_weight'),
+        Index('idx_job_role_skills_role', 'role_id'),
     )
 
 
@@ -115,5 +118,8 @@ class MarketReadinessScores(Base):
         UniqueConstraint('student_id', 'role_id', name='unique_student_role'),
         CheckConstraint('readiness_score BETWEEN 0 AND 100', name='check_score'),
         CheckConstraint('readiness_level IN (\'Ready\', \'Developing\', \'Entry-Level\')', name='check_level'),
+        Index('idx_readiness_student', 'student_id'),
+        Index('idx_readiness_level', 'readiness_level'),
+        Index('idx_readiness_score', 'readiness_score'),
     )
 
