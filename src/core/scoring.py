@@ -1,11 +1,7 @@
-"""
-Market Readiness Score Calculation Engine
-"""
 from decimal import Decimal
 from typing import Dict
-from sqlalchemy.orm import Session, joinedload
-from src.database.models import Student, JobRole, JobRoleSkills, StudentSkills, MarketReadinessScores, SkillsMaster
-from sqlalchemy import func
+from sqlalchemy.orm import Session
+from src.database.models import *
 
 PROFICIENCY_MAP = {
     'Beginner': Decimal('0.25'),
@@ -14,33 +10,30 @@ PROFICIENCY_MAP = {
     'Expert': Decimal('1.00')
 }
 
-
 def calculate_readiness_score(student_id: int, role_id: int, session: Session) -> Dict:
     """
     Calculate market readiness score using weighted skill matching.
     
     Algorithm:
-    1. Get all required skills for the job role
-    2. Get student's current skills
-    3. For each required skill:
-       - If student has it: calculate proficiency_factor = min(student_prof / required_prof, 1.0)
-       - Add (proficiency_factor × importance_weight) to score
-    4. Final score = (total_matched_score / sum_of_all_weights) × 100
+    Score = (Σ matched_skill_proficiency × importance_weight) / Σ required_weights × 100
+    
+    Readiness Levels:
+    - 80-100% = Ready
+    - 50-79% = Developing
+    - 0-49% = Entry-Level
     
     Returns:
         {
-            'readiness_score': 0-100,
-            'readiness_level': 'Ready' | 'Developing' | 'Entry-Level',
+            'readiness_score': float (0-100),
+            'readiness_level': str,
             'matched_skills_count': int,
             'required_skills_count': int,
             'skill_gap_count': int,
-            'missing_skills': [{skill_name, importance_weight}]
+            'missing_skills': list
         }
     """
-    # Get required skills for role (with skill relationship loaded)
-    required_skills = session.query(JobRoleSkills).options(
-        joinedload(JobRoleSkills.skill)
-    ).filter_by(role_id=role_id).all()
+    # Get required skills for role
+    required_skills = session.query(JobRoleSkills).filter_by(role_id=role_id).all()
     
     if not required_skills:
         return {
@@ -82,12 +75,11 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session) -
             matched_count += 1
         else:
             # Student missing this skill
+            skill = session.query(SkillsMaster).filter_by(skill_id=skill_id).first()
             missing_skills.append({
                 'skill_id': skill_id,
-                'skill_name': req_skill.skill.skill_name,
-                'importance_weight': float(importance),
-                'priority': 'High' if importance >= Decimal('0.8') else 
-                           'Medium' if importance >= Decimal('0.5') else 'Low'
+                'skill_name': skill.skill_name if skill else f'Skill {skill_id}',
+                'importance_weight': float(importance)
             })
     
     # Calculate final percentage
@@ -113,48 +105,46 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session) -
         'missing_skills': sorted(missing_skills, key=lambda x: x['importance_weight'], reverse=True)
     }
 
-
 def calculate_all_scores(session: Session) -> None:
     """
     Calculate readiness scores for ALL student-role combinations.
     Updates market_readiness_scores table.
+    
+    For 500 students × 5 roles = 2500 score records
     """
+    from sqlalchemy import func
+    
     students = session.query(Student).all()
     roles = session.query(JobRole).all()
     
     print(f"Calculating scores for {len(students)} students × {len(roles)} roles...")
     
+    count = 0
     for student in students:
         for role in roles:
             result = calculate_readiness_score(student.student_id, role.role_id, session)
             
-            # Upsert score record
-            score_record = session.query(MarketReadinessScores).filter_by(
+            # Insert score record
+            score_record = MarketReadinessScores(
                 student_id=student.student_id,
-                role_id=role.role_id
-            ).first()
+                role_id=role.role_id,
+                readiness_score=result['readiness_score'],
+                readiness_level=result['readiness_level'],
+                matched_skills_count=result['matched_skills_count'],
+                required_skills_count=result['required_skills_count'],
+                skill_gap_count=result['skill_gap_count']
+            )
+            session.add(score_record)
+            count += 1
             
-            if score_record:
-                # Update existing
-                score_record.readiness_score = result['readiness_score']
-                score_record.readiness_level = result['readiness_level']
-                score_record.matched_skills_count = result['matched_skills_count']
-                score_record.required_skills_count = result['required_skills_count']
-                score_record.skill_gap_count = result['skill_gap_count']
-                score_record.calculated_at = func.now()
-            else:
-                # Insert new
-                score_record = MarketReadinessScores(
-                    student_id=student.student_id,
-                    role_id=role.role_id,
-                    readiness_score=result['readiness_score'],
-                    readiness_level=result['readiness_level'],
-                    matched_skills_count=result['matched_skills_count'],
-                    required_skills_count=result['required_skills_count'],
-                    skill_gap_count=result['skill_gap_count']
-                )
-                session.add(score_record)
+            if count % 100 == 0:
+                print(f"  Processed {count} scores...")
     
     session.commit()
-    print("✓ All readiness scores calculated!")
+    print(f"✓ All {count} readiness scores calculated!")
 
+if __name__ == "__main__":
+    from src.database.connection import get_db_session
+    session = get_db_session()
+    calculate_all_scores(session)
+    session.close()
