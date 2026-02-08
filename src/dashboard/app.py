@@ -236,7 +236,7 @@ st.markdown("""
 # CACHED DATA FUNCTIONS
 # ============================================================================
 
-@st.cache_data(ttl=300)  # Cache for 5 minutes
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_cohort_metrics():
     """Load high-level cohort metrics."""
     session = get_db_session()
@@ -269,7 +269,7 @@ def load_cohort_metrics():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_readiness_distribution():
     """Load readiness distribution data."""
     session = get_db_session()
@@ -283,7 +283,7 @@ def load_readiness_distribution():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_program_comparison():
     """Load program comparison data."""
     session = get_db_session()
@@ -294,7 +294,10 @@ def load_program_comparison():
             func.count(func.distinct(Student.student_id)).label('student_count')
         ).join(MarketReadinessScores).group_by(Student.program).all()
         
-        return pd.DataFrame(data, columns=['Program', 'Avg Readiness', 'Students'])
+        df = pd.DataFrame(data, columns=['Program', 'Avg Readiness', 'Students'])
+        # Ensure BCA is replaced with Btech if it exists
+        df['Program'] = df['Program'].str.replace('BCA', 'Btech', regex=False)
+        return df
     finally:
         session.close()
 
@@ -362,7 +365,7 @@ def load_skill_gap_data():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_student_table_data():
     """Load student table data for drill-down - one record per student showing best score."""
     session = get_db_session()
@@ -399,7 +402,7 @@ def load_student_table_data():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_year_progression():
     """Load readiness progression by academic year."""
     session = get_db_session()
@@ -903,8 +906,12 @@ def run_complete_pipeline():
         st.success("✅ Pipeline completed successfully! Data regenerated, models retrained, and scores updated.")
         st.info("💡 Refreshing page to show updated results...")
         
-        # Clear cache to force reload
+        # Clear ALL caches to force reload
         st.cache_data.clear()
+        
+        # Wait a moment for database to update
+        import time
+        time.sleep(1)
         
         # Force page refresh
         st.rerun()

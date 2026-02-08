@@ -200,6 +200,7 @@ def populate_students_and_skills(session, num_students=500, clear_existing=False
     
     session.commit()
     print(f"✓ {num_students} students and their skills populated!")
+    print(f"  Program distribution: {session.query(Student.program, func.count(Student.student_id)).group_by(Student.program).all()}")
 
 def main():
     session = get_db_session()
