@@ -324,67 +324,41 @@ def load_career_role_intelligence():
 
 @st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_skill_gap_data():
-    """Load skill gap analysis data - calculates actual gaps per student-role combination."""
+    """Load skill gap analysis data - shows current student numbers lacking each skill."""
     session = get_db_session()
     try:
-        # Get all students and roles
-        students = session.query(Student).all()
-        roles = session.query(JobRole).all()
+        # Get all required skills from job roles
+        required_skills = session.query(
+            JobRoleSkills.skill_id,
+            func.count(func.distinct(JobRoleSkills.role_id)).label('role_count'),
+            func.avg(JobRoleSkills.importance_weight).label('avg_weight')
+        ).group_by(JobRoleSkills.skill_id).all()
         
-        # Track skill gaps per skill across all student-role combinations
-        skill_gap_counts = {}
+        # Get skills that students have
+        student_skills = session.query(
+            StudentSkills.skill_id,
+            func.count(func.distinct(StudentSkills.student_id)).label('student_count')
+        ).group_by(StudentSkills.skill_id).all()
         
-        for student in students:
-            student_skill_ids = set(
-                s.skill_id for s in session.query(StudentSkills)
-                .filter_by(student_id=student.student_id).all()
-            )
-            
-            for role in roles:
-                # Get required skills for this role
-                required_skills = session.query(JobRoleSkills).filter_by(role_id=role.role_id).all()
-                
-                for req_skill in required_skills:
-                    skill_id = req_skill.skill_id
-                    importance = float(req_skill.importance_weight) if req_skill.importance_weight else 0.5
-                    
-                    # Check if student is missing this skill
-                    if skill_id not in student_skill_ids:
-                        if skill_id not in skill_gap_counts:
-                            skill = session.query(SkillsMaster).filter_by(skill_id=skill_id).first()
-                            if skill:
-                                skill_gap_counts[skill_id] = {
-                                    'Skill': skill.skill_name,
-                                    'Category': skill.category or 'Other',
-                                    'Missing Count': 0,
-                                    'Total Importance': 0.0,
-                                    'Role Count': 0
-                                }
-                        
-                        if skill_id in skill_gap_counts:
-                            skill_gap_counts[skill_id]['Missing Count'] += 1
-                            skill_gap_counts[skill_id]['Total Importance'] += importance
+        student_skill_dict = {skill_id: count for skill_id, count in student_skills}
+        total_students = session.query(Student).count()
         
-        # Count unique roles per skill
-        for skill_id in skill_gap_counts:
-            role_ids = set()
-            for role in roles:
-                if session.query(JobRoleSkills).filter_by(role_id=role.role_id, skill_id=skill_id).first():
-                    role_ids.add(role.role_id)
-            skill_gap_counts[skill_id]['Role Count'] = len(role_ids)
-        
-        # Convert to list and calculate average importance
+        # Calculate missing counts
         gaps = []
-        for skill_id, data in skill_gap_counts.items():
-            gaps.append({
-                'Skill': data['Skill'],
-                'Category': data['Category'],
-                'Missing Count': data['Missing Count'],
-                'Importance': data['Total Importance'] / max(data['Missing Count'], 1),
-                'Role Count': data['Role Count']
-            })
+        for skill_id, role_count, avg_weight in required_skills:
+            skill = session.query(SkillsMaster).filter_by(skill_id=skill_id).first()
+            if skill:
+                students_with_skill = student_skill_dict.get(skill_id, 0)
+                missing_count = total_students - students_with_skill
+                gaps.append({
+                    'Skill': skill.skill_name,
+                    'Category': skill.category or 'Other',
+                    'Missing Count': missing_count,
+                    'Role Count': role_count,
+                    'Importance': float(avg_weight) if avg_weight else 0.5
+                })
         
-        # Sort by missing count (most critical gaps first)
+        # Sort by missing count
         gaps.sort(key=lambda x: x['Missing Count'], reverse=True)
         
         return pd.DataFrame(gaps[:20])
