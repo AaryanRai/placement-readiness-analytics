@@ -16,34 +16,50 @@ from src.data_generation.generate_skills import (
 )
 
 def populate_skills_master(session, taxonomy):
-    """Populate skills_master table."""
+    """Populate skills_master table (idempotent)."""
     print("Populating skills_master...")
+    
+    existing_count = session.query(SkillsMaster).count()
+    if existing_count > 0:
+        print(f"  Skills already exist ({existing_count} skills). Skipping...")
+        return
     
     for category, subcats in taxonomy.items():
         if isinstance(subcats, dict):
             for subcat, skill_list in subcats.items():
                 for skill_name in skill_list:
+                    # Check if skill already exists
+                    existing = session.query(SkillsMaster).filter_by(skill_name=skill_name).first()
+                    if not existing:
+                        skill = SkillsMaster(
+                            skill_name=skill_name,
+                            category=category,
+                            subcategory=subcat
+                        )
+                        session.add(skill)
+        else:  # Soft Skills
+            for skill_name in subcats:
+                # Check if skill already exists
+                existing = session.query(SkillsMaster).filter_by(skill_name=skill_name).first()
+                if not existing:
                     skill = SkillsMaster(
                         skill_name=skill_name,
                         category=category,
-                        subcategory=subcat
+                        subcategory=None
                     )
                     session.add(skill)
-        else:  # Soft Skills
-            for skill_name in subcats:
-                skill = SkillsMaster(
-                    skill_name=skill_name,
-                    category=category,
-                    subcategory=None
-                )
-                session.add(skill)
     
     session.commit()
     print("✓ Skills master populated!")
 
 def populate_job_roles(session):
-    """Populate job_roles and job_role_skills tables."""
+    """Populate job_roles and job_role_skills tables (idempotent)."""
     print("Populating job roles...")
+    
+    existing_count = session.query(JobRole).count()
+    if existing_count > 0:
+        print(f"  Job roles already exist ({existing_count} roles). Skipping...")
+        return
     
     # Define 5 job roles with their skill requirements
     roles_config = {
@@ -127,7 +143,12 @@ def populate_job_roles(session):
     print("✓ Job roles populated!")
 
 def populate_students_and_skills(session, num_students=500):
-    """Populate students and their skills."""
+    """Populate students and their skills (idempotent)."""
+    existing_count = session.query(Student).count()
+    if existing_count > 0:
+        print(f"  Students already exist ({existing_count} students). Skipping...")
+        return
+    
     print(f"Generating {num_students} students...")
     
     taxonomy = load_skill_taxonomy()
