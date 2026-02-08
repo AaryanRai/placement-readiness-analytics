@@ -1,22 +1,19 @@
 {
   "Technical": {
-    "Programming": ["Python", "JavaScript", "Java", "C++", "SQL", "R"],
-    "Data": ["Pandas", "NumPy", "Excel", "Tableau", "Power BI", "Statistics"],
-    "Web": ["React", "Node.js", "HTML/CSS", "Django", "Flask"],
-    "Database": ["PostgreSQL", "MySQL", "MongoDB"],
-    "Cloud": ["AWS", "Azure", "Docker"]
+    "Programming": ["Python", "JavaScript", "Java", "SQL", "R", "C++"],
+    "Data Analysis": ["Pandas", "NumPy", "Excel", "Tableau", "Power BI", "Statistics"],
+    "Web Development": ["React", "Node.js", "HTML/CSS", "Django", "Flask"],
+    "Database": ["PostgreSQL", "MySQL", "MongoDB", "SQLAlchemy"],
+    "Cloud": ["AWS", "Azure", "Docker", "Kubernetes"]
   },
   "Business": {
-    "Analysis": ["Business Intelligence", "Financial Modeling"],
-    "Marketing": ["SEO", "Google Ads", "Social Media Marketing"],
-    "Management": ["Project Management", "Agile"]
+    "Analysis": ["Business Intelligence", "Financial Modeling", "Requirements Gathering"],
+    "Marketing": ["SEO", "Google Ads", "Social Media Marketing", "Content Strategy"],
+    "Management": ["Project Management", "Agile", "Scrum"]
   },
   "Design": {
-    "UI/UX": ["Figma", "Wireframing", "User Research"],
-    "Graphics": ["Photoshop", "Canva"]
+    "UI/UX": ["Figma", "Wireframing", "User Research", "Adobe XD"],
+    "Graphics": ["Photoshop", "Illustrator", "Canva"]
   },
-  "Soft Skills": {
-    "General": ["Communication", "Teamwork", "Leadership", "Problem Solving"]
-  }
+  "Soft Skills": ["Communication", "Teamwork", "Leadership", "Problem Solving", "Time Management"]
 }
-
