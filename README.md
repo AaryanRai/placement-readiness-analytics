@@ -1,6 +1,6 @@
 # University Placement Readiness Analytics System
 
-A data-heavy, university-facing placement analytics dashboard that processes student records through PostgreSQL and automated pipelines, delivering real-time insights on job market readiness.
+A data-heavy, university-facing placement analytics dashboard that processes student records through PostgreSQL and automated pipelines, delivering real-time insights on job market readiness using **Machine Learning models at its core**.
 
 ## 🎯 MVP Status
 
