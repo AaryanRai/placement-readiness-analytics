@@ -857,7 +857,7 @@ def render_year_progression():
                 x=0.5,
                 xanchor='center'
             ),
-            legend=dict(font=dict(color='#ffffff'))
+            legend=dict(font=dict(color='#ffffff')),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             xaxis=dict(title=dict(text="Academic Year", font=dict(size=13, color='#ffffff'))),
