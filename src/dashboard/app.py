@@ -301,7 +301,7 @@ def load_program_comparison():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_career_role_intelligence():
     """Load career role readiness data."""
     session = get_db_session()
@@ -322,7 +322,7 @@ def load_career_role_intelligence():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_skill_gap_data():
     """Load skill gap analysis data."""
     session = get_db_session()
@@ -421,7 +421,7 @@ def load_year_progression():
     finally:
         session.close()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
 def load_skill_acquisition_trends():
     """Load skill acquisition trends over time."""
     session = get_db_session()
@@ -1364,8 +1364,14 @@ def main():
         st.markdown("---")
         st.markdown("## Pipeline Control")
         
-        if st.button("🔄 Run Complete Pipeline", type="primary", use_container_width=True):
+        # Use session state to track pipeline execution
+        if 'pipeline_running' not in st.session_state:
+            st.session_state.pipeline_running = False
+        
+        if st.button("🔄 Run Complete Pipeline", type="primary", use_container_width=True, disabled=st.session_state.pipeline_running):
+            st.session_state.pipeline_running = True
             run_complete_pipeline()
+            st.session_state.pipeline_running = False
     
     # Render header and KPIs
     render_header()
