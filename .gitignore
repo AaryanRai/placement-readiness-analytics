@@ -80,8 +80,9 @@ htmlcov/
 # Streamlit
 .streamlit/
 
-# Internal documentation (not for public)
+# Internal documentation and utility scripts (not for public)
 DASHBOARD_REDESIGN.md
+CLEAR_CACHE.sh
 
 # Temporary files
 *.tmp

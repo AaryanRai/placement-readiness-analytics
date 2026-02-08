@@ -143,7 +143,7 @@ def extract_features_for_training(session: Session = None) -> pd.DataFrame:
                 'source_Project': source_counts['Project'],
                 'source_Workshop': source_counts['Workshop'],
                 
-                # Role-specific features
+                # Role-specific features    
                 'required_skills_count': score.required_skills_count,
                 'matched_skills_count': score.matched_skills_count,
                 'skill_gap_count': score.skill_gap_count,
