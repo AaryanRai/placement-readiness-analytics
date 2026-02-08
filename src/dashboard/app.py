@@ -830,10 +830,30 @@ def render_data_table():
 
 def render_ml_section():
     """Render ML predictions and model comparison section."""
-    st.markdown('<div class="section-header">ML Model Predictions & Comparison</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">ML-Based Readiness Prediction System</div>', unsafe_allow_html=True)
+    
+    # Model Explanation Section
+    st.markdown("""
+    <div class="info-card" style="margin-bottom: 2rem;">
+        <h3>🤖 Machine Learning Models at the Core</h3>
+        <p>This system uses <strong>two trained ML models</strong> as the primary method for predicting student readiness:</p>
+        <ol>
+            <li><strong>Decision Tree Classifier</strong> - Classifies students into readiness levels (Ready/Developing/Entry-Level)</li>
+            <li><strong>Random Forest Regressor</strong> - Predicts exact readiness scores (0-100%)</li>
+        </ol>
+        <p><strong>Why These Models?</strong></p>
+        <ul>
+            <li><strong>Decision Tree:</strong> Interpretable, handles non-linear relationships, works well with categorical features</li>
+            <li><strong>Random Forest:</strong> High accuracy, reduces overfitting, captures complex feature interactions</li>
+        </ul>
+        <p><strong>How They Work:</strong> The models learn from 2,500 student-role combinations, analyzing 30 features including skill portfolios, proficiency levels, program types, and role requirements to make predictions.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Check if models exist
     from pathlib import Path
+    from src.ml_models.model_info import get_model_feature_importance, get_model_performance_metrics
+    
     models_dir = Path(__file__).parent.parent.parent / 'models'
     classifier_path = models_dir / 'readiness_classifier.pkl'
     regressor_path = models_dir / 'readiness_regressor.pkl'
@@ -857,34 +877,38 @@ def render_ml_section():
                     st.code(result.stderr)
         return
     
+    # Get actual model data
+    model_info = get_model_feature_importance()
+    perf_metrics = get_model_performance_metrics()
+    
     # Model Performance Metrics
-    st.markdown("### Model Performance")
+    st.markdown("### Model Performance Metrics")
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="kpi-card" style="border-left-color: #3b82f6;">
             <div class="kpi-label">Classifier Accuracy</div>
-            <div class="kpi-value">87.0%</div>
-            <div class="kpi-trend">Decision Tree</div>
+            <div class="kpi-value">{perf_metrics['classifier']['accuracy']*100:.1f}%</div>
+            <div class="kpi-trend">{perf_metrics['classifier']['model_type']}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class="kpi-card" style="border-left-color: #059669;">
             <div class="kpi-label">Regressor R² Score</div>
-            <div class="kpi-value">95.9%</div>
-            <div class="kpi-trend">Random Forest</div>
+            <div class="kpi-value">{perf_metrics['regressor']['r2_score']*100:.1f}%</div>
+            <div class="kpi-trend">{perf_metrics['regressor']['model_type']}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        st.markdown("""
+        st.markdown(f"""
         <div class="kpi-card" style="border-left-color: #d97706;">
             <div class="kpi-label">RMSE</div>
-            <div class="kpi-value">5.07</div>
-            <div class="kpi-trend">Score Prediction</div>
+            <div class="kpi-value">{perf_metrics['regressor']['rmse']:.2f}</div>
+            <div class="kpi-trend">Score Prediction Error</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -906,8 +930,8 @@ def render_ml_section():
         comparison_data = []
         for student in students[:5]:  # Compare first 5 students
             for role in roles[:2]:  # Compare first 2 roles
-                # Rule-based prediction
-                rule_result = calculate_readiness_score(student.student_id, role.role_id, session)
+                # Rule-based prediction (explicitly request rule-based)
+                rule_result = calculate_readiness_score(student.student_id, role.role_id, session, use_ml=False)
                 
                 # ML prediction
                 ml_result = predict_readiness_ml(student.student_id, role.role_id, session)
@@ -937,66 +961,76 @@ def render_ml_section():
             </div>
             """, unsafe_allow_html=True)
         
-        # Feature Importance Visualization
-        st.markdown("### Top Feature Importance (ML Models)")
+        # Feature Importance Visualization - Using Actual Model Data
+        st.markdown("### Feature Importance Analysis")
+        st.markdown("""
+        <div class="insight-box" style="margin-bottom: 1rem;">
+            <strong>Understanding Feature Importance:</strong> These charts show which features the ML models consider most important when making predictions. 
+            Higher importance means the feature has more influence on the model's decision.
+        </div>
+        """, unsafe_allow_html=True)
         
         col1, col2 = st.columns(2)
         
         with col1:
-            # Classifier feature importance
-            st.markdown("**Decision Tree Classifier**")
-            classifier_features = pd.DataFrame({
-                'Feature': ['match_ratio', 'avg_proficiency', 'skills_Soft Skills', 'source_Course', 'program_BBA'],
-                'Importance': [0.897, 0.033, 0.010, 0.009, 0.006]
-            })
-            fig = px.bar(
-                classifier_features,
-                x='Importance',
-                y='Feature',
-                orientation='h',
-                color='Importance',
-                color_continuous_scale='Blues',
-                labels={'Importance': 'Feature Importance'}
-            )
-            fig.update_layout(
-                height=300,
-                showlegend=False,
-                title=dict(text="Top 5 Features", font=dict(size=14, color='#ffffff')),
-                font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
-                yaxis=dict(title="")
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            # Classifier feature importance - using actual model data
+            st.markdown("**Decision Tree Classifier - Top 10 Features**")
+            if model_info['classifier'] is not None:
+                classifier_top = model_info['classifier'].head(10).copy()
+                # Clean feature names for display
+                classifier_top['Feature_Display'] = classifier_top['Feature'].str.replace('_', ' ').str.title()
+                fig = px.bar(
+                    classifier_top,
+                    x='Importance',
+                    y='Feature_Display',
+                    orientation='h',
+                    color='Importance',
+                    color_continuous_scale='Blues',
+                    labels={'Importance': 'Feature Importance', 'Feature_Display': 'Feature'}
+                )
+                fig.update_layout(
+                    height=400,
+                    showlegend=False,
+                    title=dict(text="Classifier Feature Importance", font=dict(size=14, color='#ffffff')),
+                    font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
+                    yaxis=dict(title="", autorange='reversed')
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Feature importance data not available")
         
         with col2:
-            # Regressor feature importance
-            st.markdown("**Random Forest Regressor**")
-            regressor_features = pd.DataFrame({
-                'Feature': ['match_ratio', 'matched_skills_count', 'skill_gap_count', 'avg_proficiency', 'proficiency_Beginner'],
-                'Importance': [0.936, 0.031, 0.007, 0.005, 0.003]
-            })
-            fig = px.bar(
-                regressor_features,
-                x='Importance',
-                y='Feature',
-                orientation='h',
-                color='Importance',
-                color_continuous_scale='Greens',
-                labels={'Importance': 'Feature Importance'}
-            )
-            fig.update_layout(
-                height=300,
-                showlegend=False,
-                title=dict(text="Top 5 Features", font=dict(size=14, color='#ffffff')),
-                font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
-                yaxis=dict(title="")
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            # Regressor feature importance - using actual model data
+            st.markdown("**Random Forest Regressor - Top 10 Features**")
+            if model_info['regressor'] is not None:
+                regressor_top = model_info['regressor'].head(10).copy()
+                # Clean feature names for display
+                regressor_top['Feature_Display'] = regressor_top['Feature'].str.replace('_', ' ').str.title()
+                fig = px.bar(
+                    regressor_top,
+                    x='Importance',
+                    y='Feature_Display',
+                    orientation='h',
+                    color='Importance',
+                    color_continuous_scale='Greens',
+                    labels={'Importance': 'Feature Importance', 'Feature_Display': 'Feature'}
+                )
+                fig.update_layout(
+                    height=400,
+                    showlegend=False,
+                    title=dict(text="Regressor Feature Importance", font=dict(size=14, color='#ffffff')),
+                    font=dict(family="Arial, sans-serif", size=11, color='#ffffff'),
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(title=dict(text="Importance", font=dict(size=12, color='#ffffff'))),
+                    yaxis=dict(title="", autorange='reversed')
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Feature importance data not available")
         
         # ML Prediction Distribution
         st.markdown("### ML Prediction Distribution")

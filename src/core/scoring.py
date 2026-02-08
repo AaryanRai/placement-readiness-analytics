@@ -17,17 +17,29 @@ PROFICIENCY_MAP = {
     'Expert': Decimal('1.00')
 }
 
-def calculate_readiness_score(student_id: int, role_id: int, session: Session) -> Dict:
+def calculate_readiness_score(student_id: int, role_id: int, session: Session, use_ml: bool = True) -> Dict:
     """
-    Calculate market readiness score using weighted skill matching.
+    Calculate market readiness score using ML models (default) or rule-based algorithm.
     
-    Algorithm:
+    By default, uses ML models for prediction. Falls back to rule-based if ML unavailable.
+    
+    ML Approach:
+    - Uses trained Random Forest Regressor for score prediction
+    - Uses trained Decision Tree Classifier for level prediction
+    
+    Rule-Based Algorithm (fallback):
     Score = (Σ matched_skill_proficiency × importance_weight) / Σ required_weights × 100
     
     Readiness Levels:
     - 80-100% = Ready
     - 50-79% = Developing
     - 0-49% = Entry-Level
+    
+    Args:
+        student_id: Student ID
+        role_id: Role ID
+        session: Database session
+        use_ml: If True, use ML models (default). If False, use rule-based.
     
     Returns:
         {
@@ -36,9 +48,37 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session) -
             'matched_skills_count': int,
             'required_skills_count': int,
             'skill_gap_count': int,
-            'missing_skills': list
+            'missing_skills': list,
+            'model_used': str
         }
     """
+    # Try ML first if requested
+    if use_ml:
+        try:
+            from src.ml_models.predict import predict_readiness_ml
+            ml_result = predict_readiness_ml(student_id, role_id, session)
+            
+            if not ml_result.get('error'):
+                # Get metadata for ML result
+                required_skills = session.query(JobRoleSkills).filter_by(role_id=role_id).all()
+                required_count = len(required_skills)
+                
+                student_skills = session.query(StudentSkills).filter_by(student_id=student_id).all()
+                student_skill_ids = {s.skill_id for s in student_skills}
+                matched_count = sum(1 for req in required_skills if req.skill_id in student_skill_ids)
+                
+                return {
+                    'readiness_score': ml_result['readiness_score_ml'],
+                    'readiness_level': ml_result['readiness_level_ml'],
+                    'matched_skills_count': matched_count,
+                    'required_skills_count': required_count,
+                    'skill_gap_count': required_count - matched_count,
+                    'missing_skills': [],
+                    'model_used': 'ML (Random Forest + Decision Tree)'
+                }
+        except Exception as e:
+            # Fall through to rule-based if ML fails
+            pass
     # Get required skills for role
     required_skills = session.query(JobRoleSkills).filter_by(role_id=role_id).all()
     
@@ -109,18 +149,34 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session) -
         'matched_skills_count': matched_count,
         'required_skills_count': required_count,
         'skill_gap_count': required_count - matched_count,
-        'missing_skills': sorted(missing_skills, key=lambda x: x['importance_weight'], reverse=True)
+        'missing_skills': sorted(missing_skills, key=lambda x: x['importance_weight'], reverse=True),
+        'model_used': 'Rule-based (weighted skill matching)'
     }
 
-def calculate_all_scores(session: Session) -> None:
+def calculate_all_scores(session: Session, use_ml: bool = True) -> None:
     """
-    Calculate readiness scores for ALL student-role combinations.
+    Calculate readiness scores for ALL student-role combinations using ML (default) or rule-based.
     Updates market_readiness_scores table.
     
     For 500 students × 5 roles = 2500 score records
+    
+    Args:
+        session: Database session
+        use_ml: If True (default), use ML models. If False, use rule-based algorithm.
     """
     from sqlalchemy import func
     
+    # If ML requested, use ML batch prediction
+    if use_ml:
+        try:
+            from src.core.scoring_ml import calculate_all_scores_ml
+            calculate_all_scores_ml(session, update_database=True)
+            return
+        except Exception as e:
+            print(f"ML scoring failed, falling back to rule-based: {e}")
+            # Fall through to rule-based
+    
+    # Rule-based calculation
     students = session.query(Student).all()
     roles = session.query(JobRole).all()
     
@@ -129,7 +185,7 @@ def calculate_all_scores(session: Session) -> None:
     count = 0
     for student in students:
         for role in roles:
-            result = calculate_readiness_score(student.student_id, role.role_id, session)
+            result = calculate_readiness_score(student.student_id, role.role_id, session, use_ml=False)
             
             # Check if record exists (upsert logic)
             existing = session.query(MarketReadinessScores).filter_by(
