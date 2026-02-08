@@ -108,7 +108,7 @@ def calculate_readiness_score(student_id, role_id):
 
 2. **Bar Chart:** Average Readiness by Program
    - BBA: 62%
-   - BCA: 68%
+   - Btech: 68%
    - B.Com: 59%
 
 3. **Table:** Top 10 Students by Readiness
@@ -131,7 +131,7 @@ CREATE TABLE students (
     student_id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(150) UNIQUE NOT NULL,
-    program VARCHAR(50) NOT NULL CHECK (program IN ('BBA', 'BCA', 'B.Com')),
+    program VARCHAR(50) NOT NULL CHECK (program IN ('BBA', 'Btech', 'B.Com')),
     year_of_study INTEGER CHECK (year_of_study BETWEEN 1 AND 4),
     enrollment_year INTEGER NOT NULL,
     target_role VARCHAR(100),
@@ -146,9 +146,9 @@ CREATE INDEX idx_students_year ON students(year_of_study);
 ```
 student_id | name         | program | year | target_role
 -----------|--------------|---------|------|-------------
-1          | Aarav Kumar  | BCA     | 3    | Data Analyst
+1          | Aarav Kumar  | Btech   | 3    | Data Analyst
 2          | Priya Sharma | BBA     | 4    | Business Analyst
-3          | Rahul Singh  | BCA     | 2    | Full-Stack Developer
+3          | Rahul Singh  | Btech   | 2    | Full-Stack Developer
 ```
 
 ### Table 2: skills_master
@@ -289,7 +289,7 @@ STUDENT_CONFIG = {
     'total': 2000,
     'programs': {
         'BBA': 800,   # 40%
-        'BCA': 700,   # 35%
+        'Btech': 700,   # 35%
         'B.Com': 500  # 25%
     },
     'years': {
@@ -321,7 +321,7 @@ PROFICIENCY_BY_TIME = {
 ### Program-to-Role Mapping
 ```python
 TARGET_ROLES_BY_PROGRAM = {
-    'BCA': ['Data Analyst', 'Full-Stack Developer', 'Frontend Developer', 'Backend Developer'],
+    'Btech': ['Data Analyst', 'Full-Stack Developer', 'Frontend Developer', 'Backend Developer'],
     'BBA': ['Business Analyst', 'Product Manager', 'Digital Marketer', 'HR Analyst'],
     'B.Com': ['Financial Analyst', 'Business Analyst', 'Data Analyst']
 }

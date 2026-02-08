@@ -886,7 +886,7 @@ def render_about_section():
             <p><strong>Student Population:</strong> 500 students across 3 academic programs</p>
             <ul>
                 <li><strong>BBA:</strong> Business Administration</li>
-                <li><strong>BCA:</strong> Computer Applications</li>
+                <li><strong>Btech:</strong> Technology</li>
                 <li><strong>B.Com:</strong> Commerce</li>
             </ul>
             <p><strong>Skills Tracked:</strong> 47 skills across 4 major categories:</p>
@@ -981,8 +981,6 @@ def main():
     
     # Render selected section
     if page == "Overview":
-        render_about_section()
-        st.markdown("<br>", unsafe_allow_html=True)
         render_cohort_section()
         st.markdown("<br>", unsafe_allow_html=True)
         render_year_progression()

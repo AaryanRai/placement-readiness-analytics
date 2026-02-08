@@ -126,7 +126,7 @@ The Streamlit dashboard includes:
    - Entry-Level (0-49%)
 
 3. **Program Comparison (Bar Chart)**
-   - Average readiness by program (BBA, BCA, B.Com)
+   - Average readiness by program (BBA, Btech, B.Com)
    - Student counts per program
 
 4. **Top 10 Students Table**

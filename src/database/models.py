@@ -21,7 +21,7 @@ class Student(Base):
     created_at = Column(TIMESTAMP, default=func.now())
     
     __table_args__ = (
-        CheckConstraint('program IN (\'BBA\', \'BCA\', \'B.Com\')', name='check_program'),
+        CheckConstraint('program IN (\'BBA\', \'Btech\', \'B.Com\')', name='check_program'),
         CheckConstraint('year_of_study BETWEEN 1 AND 4', name='check_year'),
         Index('idx_students_program', 'program'),
         Index('idx_students_year', 'year_of_study'),

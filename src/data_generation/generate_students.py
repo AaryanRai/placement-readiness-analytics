@@ -7,9 +7,9 @@ import random
 
 fake = Faker('en_IN')  # Indian names and data
 
-PROGRAMS = ['BBA', 'BCA', 'B.Com']
+PROGRAMS = ['BBA', 'Btech', 'B.Com']
 TARGET_ROLES_BY_PROGRAM = {
-    'BCA': ['Data Analyst', 'Full-Stack Developer', 'Frontend Developer', 'Backend Developer'],
+    'Btech': ['Data Analyst', 'Full-Stack Developer', 'Frontend Developer', 'Backend Developer'],
     'BBA': ['Business Analyst', 'Product Manager', 'Digital Marketer', 'HR Analyst'],
     'B.Com': ['Financial Analyst', 'Business Analyst', 'Data Analyst']
 }
