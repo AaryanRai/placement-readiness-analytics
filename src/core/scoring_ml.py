@@ -82,8 +82,11 @@ def calculate_all_scores_ml(session: Session, update_database: bool = True) -> N
     predictions_df = predict_batch_ml(session)
     
     if predictions_df.empty:
+        # If we cannot generate any predictions (e.g., models not trained yet),
+        # raise an error so the caller can gracefully fall back to the
+        # rule-based scoring pipeline.
         print("ERROR: No predictions generated. Check if models are trained.")
-        return
+        raise RuntimeError("ML predictions unavailable (no predictions generated)")
     
     count = 0
     for _, row in predictions_df.iterrows():

@@ -19,10 +19,12 @@ from src.ml_models.feature_extraction import extract_features_for_prediction
 # Model paths
 MODELS_DIR = project_root / 'models'
 CLASSIFIER_PATH = MODELS_DIR / 'readiness_classifier.pkl'
+GB_CLASSIFIER_PATH = MODELS_DIR / 'readiness_gradient_boosting.pkl'
 REGRESSOR_PATH = MODELS_DIR / 'readiness_regressor.pkl'
 LABEL_ENCODER_PATH = MODELS_DIR / 'readiness_classifier_label_encoder.pkl'
 
 # Feature columns (must match training)
+# NOTE: Keep in sync with FEATURE_COLUMNS in train_models.py
 FEATURE_COLUMNS = [
     'year_of_study', 'enrollment_year',
     'program_BBA', 'program_Btech', 'program_B.Com',
@@ -30,7 +32,7 @@ FEATURE_COLUMNS = [
     'skills_Technical', 'skills_Business', 'skills_Design', 'skills_Soft Skills',
     'proficiency_Beginner', 'proficiency_Intermediate', 'proficiency_Advanced', 'proficiency_Expert',
     'source_Course', 'source_Certification', 'source_Project', 'source_Workshop',
-    'required_skills_count', 'matched_skills_count', 'skill_gap_count', 'match_ratio',
+    'required_skills_count', 'matched_skills_count', 'skill_gap_count',
     'role_Data Analyst', 'role_Full-Stack Developer', 'role_Digital Marketer',
     'role_Business Analyst', 'role_UX/UI Designer'
 ]
@@ -38,14 +40,21 @@ FEATURE_COLUMNS = [
 def load_models():
     """Load trained models and label encoder"""
     classifier = None
+    gb_classifier = None
     regressor = None
     label_encoder = None
     
     if CLASSIFIER_PATH.exists():
         classifier = joblib.load(CLASSIFIER_PATH)
-        print(f"✓ Loaded classifier from {CLASSIFIER_PATH}")
+        print(f"✓ Loaded Decision Tree classifier from {CLASSIFIER_PATH}")
     else:
-        print(f"⚠ Classifier not found at {CLASSIFIER_PATH}")
+        print(f"⚠ Decision Tree classifier not found at {CLASSIFIER_PATH}")
+    
+    if GB_CLASSIFIER_PATH.exists():
+        gb_classifier = joblib.load(GB_CLASSIFIER_PATH)
+        print(f"✓ Loaded Gradient Boosting classifier from {GB_CLASSIFIER_PATH}")
+    else:
+        print(f"⚠ Gradient Boosting classifier not found at {GB_CLASSIFIER_PATH}")
     
     if REGRESSOR_PATH.exists():
         regressor = joblib.load(REGRESSOR_PATH)
@@ -59,11 +68,11 @@ def load_models():
     else:
         print(f"⚠ Label encoder not found at {LABEL_ENCODER_PATH}")
     
-    return classifier, regressor, label_encoder
+    return classifier, gb_classifier, regressor, label_encoder
 
 def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dict:
     """
-    Predict readiness using ML models.
+    Predict readiness using ML models (all 3 models).
     
     Args:
         student_id: Student ID
@@ -71,16 +80,19 @@ def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dic
         session: Database session
     
     Returns:
-        Dictionary with ML predictions:
+        Dictionary with ML predictions from all models:
         {
             'readiness_score_ml': float (0-100),
             'readiness_level_ml': str,
             'readiness_score_ml_probabilities': dict,
-            'model_used': str
+            'model_used': str,
+            'decision_tree': dict,
+            'gradient_boosting': dict,
+            'random_forest': dict
         }
     """
     # Load models
-    classifier, regressor, label_encoder = load_models()
+    classifier, gb_classifier, regressor, label_encoder = load_models()
     
     if classifier is None or regressor is None:
         return {
@@ -114,23 +126,47 @@ def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dic
     score_prediction = regressor.predict(X)[0]
     score_prediction = max(0, min(100, score_prediction))  # Clamp to 0-100
     
-    # Predict level using classifier
+    # Predict level using Decision Tree classifier (primary)
     level_encoded = classifier.predict(X)[0]
     level_prediction = label_encoder.inverse_transform([level_encoded])[0]
     
-    # Get prediction probabilities
+    # Get prediction probabilities from Decision Tree
     probabilities = classifier.predict_proba(X)[0]
     prob_dict = {
         label: float(prob) 
         for label, prob in zip(label_encoder.classes_, probabilities)
     }
     
-    return {
+    # Get predictions from all models
+    result = {
         'readiness_score_ml': round(float(score_prediction), 2),
         'readiness_level_ml': level_prediction,
         'readiness_score_ml_probabilities': prob_dict,
-        'model_used': 'ML (Random Forest + Decision Tree)'
+        'model_used': 'ML (Random Forest + Decision Tree + Gradient Boosting)',
+        'decision_tree': {
+            'level': level_prediction,
+            'probabilities': prob_dict
+        },
+        'random_forest': {
+            'score': round(float(score_prediction), 2)
+        }
     }
+    
+    # Add Gradient Boosting predictions if available
+    if gb_classifier is not None:
+        gb_level_encoded = gb_classifier.predict(X)[0]
+        gb_level = label_encoder.inverse_transform([gb_level_encoded])[0]
+        gb_probs = gb_classifier.predict_proba(X)[0]
+        gb_prob_dict = {
+            label: float(prob) 
+            for label, prob in zip(label_encoder.classes_, gb_probs)
+        }
+        result['gradient_boosting'] = {
+            'level': gb_level,
+            'probabilities': gb_prob_dict
+        }
+    
+    return result
 
 def predict_batch_ml(session: Session, student_ids: Optional[list] = None, role_ids: Optional[list] = None) -> pd.DataFrame:
     """
@@ -147,7 +183,7 @@ def predict_batch_ml(session: Session, student_ids: Optional[list] = None, role_
     from src.database.models import Student, JobRole, MarketReadinessScores
     
     # Load models
-    classifier, regressor, label_encoder = load_models()
+    classifier, gb_classifier, regressor, label_encoder = load_models()
     
     if classifier is None or regressor is None:
         print("ERROR: Models not trained. Please run train_models.py first.")

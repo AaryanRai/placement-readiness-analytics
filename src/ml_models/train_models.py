@@ -1,6 +1,7 @@
 """
 Train ML models for readiness prediction
 - Decision Tree Classifier: Predicts readiness level (Ready/Developing/Entry-Level)
+- Gradient Boosting Classifier: Predicts readiness level (Ready/Developing/Entry-Level)
 - Random Forest Regressor: Predicts readiness score (0-100)
 """
 import sys
@@ -13,16 +14,24 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import accuracy_score, classification_report, mean_squared_error, r2_score
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
+from sklearn.metrics import (
+    accuracy_score, classification_report, mean_squared_error, r2_score,
+    precision_score, recall_score, f1_score, confusion_matrix
+)
 from sklearn.preprocessing import LabelEncoder
 import joblib
 import os
+import json
+from datetime import datetime
 
 from src.ml_models.feature_extraction import extract_features_for_training
 from src.database.connection import get_db_session
 
 # Feature columns (excluding target variables)
+# NOTE: We intentionally exclude 'match_ratio' to prevent it from becoming an
+# overly dominant shortcut feature. Models instead learn from underlying
+# portfolio and role features (required/matched/skill_gap).
 FEATURE_COLUMNS = [
     'year_of_study', 'enrollment_year',
     'program_BBA', 'program_Btech', 'program_B.Com',
@@ -30,7 +39,7 @@ FEATURE_COLUMNS = [
     'skills_Technical', 'skills_Business', 'skills_Design', 'skills_Soft Skills',
     'proficiency_Beginner', 'proficiency_Intermediate', 'proficiency_Advanced', 'proficiency_Expert',
     'source_Course', 'source_Certification', 'source_Project', 'source_Workshop',
-    'required_skills_count', 'matched_skills_count', 'skill_gap_count', 'match_ratio',
+    'required_skills_count', 'matched_skills_count', 'skill_gap_count',
     'role_Data Analyst', 'role_Full-Stack Developer', 'role_Digital Marketer',
     'role_Business Analyst', 'role_UX/UI Designer'
 ]
@@ -103,7 +112,82 @@ def train_classifier(df: pd.DataFrame, save_path: str = None) -> DecisionTreeCla
         print(f"\n✓ Model saved to: {save_path}")
         print(f"✓ Label encoder saved to: {save_path.replace('.pkl', '_label_encoder.pkl')}")
     
-    return model, le
+    return model, le, X_test, y_test, le.classes_
+
+def train_gradient_boosting_classifier(df: pd.DataFrame, save_path: str = None, label_encoder: LabelEncoder = None):
+    """
+    Train Gradient Boosting Classifier for readiness level prediction.
+    
+    Args:
+        df: DataFrame with features and 'readiness_level' target
+        save_path: Path to save the trained model
+        label_encoder: Pre-fitted label encoder (from Decision Tree training)
+    
+    Returns:
+        Trained GradientBoostingClassifier, label encoder, test data, test labels, class names
+    """
+    print("\n" + "="*60)
+    print("Training Gradient Boosting Classifier")
+    print("="*60)
+    
+    # Prepare features and target
+    X = df[FEATURE_COLUMNS].copy()
+    y = df['readiness_level'].copy()
+    
+    # Use existing label encoder or create new one
+    if label_encoder is None:
+        le = LabelEncoder()
+        y_encoded = le.fit_transform(y)
+    else:
+        le = label_encoder
+        y_encoded = le.transform(y)
+    
+    # Split data (use same random_state for consistency)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+    )
+    
+    print(f"Training samples: {len(X_train)}")
+    print(f"Test samples: {len(X_test)}")
+    
+    # Train model with anti-overfitting parameters
+    model = GradientBoostingClassifier(
+        n_estimators=100,
+        max_depth=5,  # Shallow trees to prevent overfitting
+        learning_rate=0.1,  # Moderate learning rate
+        min_samples_split=20,  # Require more samples for splits
+        min_samples_leaf=10,  # Prevent leaf nodes with few samples
+        max_features='sqrt',  # Use sqrt of features
+        random_state=None,  # Use system time for variability
+        subsample=0.8  # Use 80% of samples per tree
+    )
+    
+    model.fit(X_train, y_train)
+    
+    # Evaluate
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    
+    print(f"\nModel Accuracy: {accuracy:.4f} ({accuracy*100:.2f}%)")
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
+    
+    # Feature importance
+    feature_importance = pd.DataFrame({
+        'feature': FEATURE_COLUMNS,
+        'importance': model.feature_importances_
+    }).sort_values('importance', ascending=False)
+    
+    print("\nTop 10 Most Important Features:")
+    print(feature_importance.head(10).to_string(index=False))
+    
+    # Save model
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        joblib.dump(model, save_path)
+        print(f"\n✓ Model saved to: {save_path}")
+    
+    return model, le, X_test, y_test, le.classes_
 
 def train_regressor(df: pd.DataFrame, save_path: str = None) -> RandomForestRegressor:
     """
@@ -172,7 +256,28 @@ def train_regressor(df: pd.DataFrame, save_path: str = None) -> RandomForestRegr
         joblib.dump(model, save_path)
         print(f"\n✓ Model saved to: {save_path}")
     
-    return model
+    return model, X_test, y_test
+
+def calculate_comprehensive_metrics(y_true, y_pred, y_test_proba, classes, model_type='classification'):
+    """
+    Calculate comprehensive evaluation metrics.
+    
+    Args:
+        y_true: True labels
+        y_pred: Predicted labels
+        y_test_proba: Prediction probabilities (for classification)
+        classes: Class names
+        model_type: 'classification' or 'regression'
+    
+    Returns:
+        Dictionary with all metrics
+    """
+    from src.ml_models.evaluation_metrics import calculate_classification_metrics, calculate_regression_metrics
+    
+    if model_type == 'classification':
+        return calculate_classification_metrics(y_true, y_pred, y_test_proba, classes)
+    else:
+        return calculate_regression_metrics(y_true, y_pred)
 
 def main():
     """Main training function"""
@@ -181,7 +286,7 @@ def main():
     print("="*60)
     
     # Extract features
-    print("\n[1/3] Extracting features from database...")
+    print("\n[1/4] Extracting features from database...")
     session = get_db_session()
     try:
         df = extract_features_for_training(session)
@@ -199,27 +304,79 @@ def main():
         print(f"WARNING: Missing feature columns: {missing_cols}")
     
     # Train models
-    print("\n[2/3] Training models...")
+    print("\n[2/4] Training models...")
     
     # Create models directory
     models_dir = project_root / 'models'
     models_dir.mkdir(exist_ok=True)
     
-    # Train classifier
+    # Train Decision Tree Classifier
     classifier_path = models_dir / 'readiness_classifier.pkl'
-    classifier, label_encoder = train_classifier(df, str(classifier_path))
+    classifier, label_encoder, dt_X_test, dt_y_test, class_names = train_classifier(df, str(classifier_path))
     
-    # Train regressor
+    # Train Gradient Boosting Classifier
+    gb_classifier_path = models_dir / 'readiness_gradient_boosting.pkl'
+    gb_classifier, _, gb_X_test, gb_y_test, _ = train_gradient_boosting_classifier(
+        df, str(gb_classifier_path), label_encoder
+    )
+    
+    # Train Random Forest Regressor
     regressor_path = models_dir / 'readiness_regressor.pkl'
-    regressor = train_regressor(df, str(regressor_path))
+    regressor, rf_X_test, rf_y_test = train_regressor(df, str(regressor_path))
+    
+    # Calculate comprehensive metrics
+    print("\n[3/4] Calculating comprehensive evaluation metrics...")
+    metrics = {}
+    
+    # Decision Tree metrics
+    dt_y_pred = classifier.predict(dt_X_test)
+    dt_y_proba = classifier.predict_proba(dt_X_test)
+    metrics['decision_tree'] = calculate_comprehensive_metrics(
+        dt_y_test, dt_y_pred, dt_y_proba, class_names, 'classification'
+    )
+    
+    # Gradient Boosting metrics
+    gb_y_pred = gb_classifier.predict(gb_X_test)
+    gb_y_proba = gb_classifier.predict_proba(gb_X_test)
+    metrics['gradient_boosting'] = calculate_comprehensive_metrics(
+        gb_y_test, gb_y_pred, gb_y_proba, class_names, 'classification'
+    )
+    
+    # Random Forest metrics
+    rf_y_pred = regressor.predict(rf_X_test)
+    metrics['random_forest'] = calculate_comprehensive_metrics(
+        rf_y_test, rf_y_pred, None, None, 'regression'
+    )
+    
+    # Add metadata
+    metrics['metadata'] = {
+        'training_date': datetime.now().isoformat(),
+        'total_samples': len(df),
+        'training_samples': len(df) * 0.8,
+        'test_samples': len(df) * 0.2,
+        'feature_count': len(FEATURE_COLUMNS)
+    }
+    
+    # Save metrics to JSON
+    metrics_path = models_dir / 'model_metrics.json'
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics, f, indent=2)
+    print(f"✓ Metrics saved to: {metrics_path}")
+    
+    print("\n[4/4] Summary:")
+    print(f"  Decision Tree Accuracy: {metrics['decision_tree']['accuracy']:.4f}")
+    print(f"  Gradient Boosting Accuracy: {metrics['gradient_boosting']['accuracy']:.4f}")
+    print(f"  Random Forest R²: {metrics['random_forest']['r2_score']:.4f}")
     
     print("\n" + "="*60)
     print("Training Complete!")
     print("="*60)
     print(f"\nModels saved in: {models_dir}")
-    print(f"  - Classifier: {classifier_path.name}")
-    print(f"  - Regressor: {regressor_path.name}")
+    print(f"  - Decision Tree Classifier: {classifier_path.name}")
+    print(f"  - Gradient Boosting Classifier: {gb_classifier_path.name}")
+    print(f"  - Random Forest Regressor: {regressor_path.name}")
     print(f"  - Label Encoder: {classifier_path.name.replace('.pkl', '_label_encoder.pkl')}")
+    print(f"  - Metrics: {metrics_path.name}")
 
 if __name__ == "__main__":
     main()

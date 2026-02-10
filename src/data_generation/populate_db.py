@@ -206,14 +206,53 @@ def populate_students_and_skills(session, num_students=500, clear_existing=False
     print(f"  Program distribution: {dict(dist)}")
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Populate database with student data')
+    parser.add_argument('--clear', action='store_true', help='Clear existing data before populating')
+    parser.add_argument('--source', choices=['synthetic', 'csv'], default='synthetic',
+                        help='Data source: synthetic (default) or csv')
+    parser.add_argument('--csv-path', type=str, help='Path to students CSV file (required if --source=csv)')
+    parser.add_argument('--skills-csv', type=str, help='Path to skills CSV file (optional)')
+    parser.add_argument('--num-students', type=int, default=500, help='Number of students for synthetic generation (default: 500)')
+    
+    args = parser.parse_args()
+    
     session = get_db_session()
     
     try:
         taxonomy = load_skill_taxonomy()
         
+        # Always populate skills master and job roles (idempotent)
         populate_skills_master(session, taxonomy)
         populate_job_roles(session)
-        populate_students_and_skills(session, num_students=500)
+        
+        # Populate students based on source
+        if args.source == 'csv':
+            if not args.csv_path:
+                print("ERROR: --csv-path is required when --source=csv")
+                return
+            
+            print(f"\n[CSV Ingestion] Loading data from: {args.csv_path}")
+            from src.etl.data_ingestion import ingest_from_csv
+            
+            result = ingest_from_csv(args.csv_path, args.skills_csv)
+            
+            if result['success']:
+                print(f"✓ Successfully loaded {result['students_loaded']} students")
+                if result['skills_loaded']:
+                    print(f"✓ Successfully loaded {result['skills_loaded']} skill records")
+            else:
+                print("ERROR: CSV ingestion failed")
+                for error in result['errors']:
+                    print(f"  - {error}")
+                return
+        else:
+            # Synthetic generation
+            if args.clear:
+                populate_students_and_skills(session, num_students=args.num_students, clear_existing=True)
+            else:
+                populate_students_and_skills(session, num_students=args.num_students, clear_existing=False)
         
         print("\n=== DATABASE POPULATED SUCCESSFULLY ===")
         print(f"Students: {session.query(Student).count()}")

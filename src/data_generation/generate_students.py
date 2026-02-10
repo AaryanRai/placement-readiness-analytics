@@ -58,12 +58,17 @@ def _generate_single_student(program: str) -> Dict:
     current_year = datetime.now().year
     
     # Realistic enrollment year distribution (more recent enrollments)
-    # Weighted towards recent years
+    # Weighted towards recent years. We compute weights dynamically so the
+    # array always matches the number of possible years.
     enrollment_years = list(range(2020, current_year + 1))
-    weights = [0.1, 0.15, 0.25, 0.35, 0.15]  # Older to newer
-    weights = weights[:len(enrollment_years)]
-    weights = [w / sum(weights) for w in weights]  # Normalize
-    enrollment_year = int(np.random.choice(enrollment_years, p=weights))
+    n_years = len(enrollment_years)
+    
+    # Use a simple linear ramp where newer years have higher weight.
+    # Example for 5 years -> [1, 2, 3, 4, 5] (normalized).
+    year_weights = np.arange(1, n_years + 1, dtype=float)
+    year_weights = year_weights / year_weights.sum()
+    
+    enrollment_year = int(np.random.choice(enrollment_years, p=year_weights))
     
     # Calculate year of study realistically
     year_of_study = min(current_year - enrollment_year + 1, 4)

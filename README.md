@@ -100,10 +100,13 @@ The system follows a modular architecture with clear separation of concerns:
 
 ### Machine Learning Capabilities
 
-- **Predictive Modeling**: Two trained ML models for readiness prediction
+- **Predictive Modeling**: Three trained ML models for readiness prediction
 - **Feature Engineering**: 30 carefully engineered features from student data
-- **Model Performance**: 87% classification accuracy, 95.9% R² score for regression
+- **Comprehensive Evaluation**: Precision, Recall, F1, RMSE, MAE, MAPE metrics
+- **Model Performance**: ~87-92% classification accuracy, ~96% R² score for regression
 - **Real-time Predictions**: Fast inference for individual and batch predictions
+- **Training Data Visualizations**: Interactive charts showing data distributions and correlations
+- **New Prediction Form**: Input form for predicting readiness of new students
 
 ### Analytics and Visualization
 
@@ -117,13 +120,15 @@ The system follows a modular architecture with clear separation of concerns:
 ### Data Engineering
 
 - **ETL Pipeline**: Automated data extraction, transformation, and loading
+- **Multiple Data Sources**: Support for synthetic data generation and CSV file ingestion
+- **Data Validation**: Comprehensive validation before database insertion
 - **Idempotent Operations**: Safe re-running of data population scripts
 - **Dynamic Data Generation**: Realistic distributions using statistical methods
 - **Database Optimization**: Indexed queries and efficient data structures
 
 ## Machine Learning Models
 
-The system employs two machine learning models as the core prediction mechanism:
+The system employs three machine learning models as the core prediction mechanism:
 
 ### Decision Tree Classifier
 
@@ -138,10 +143,11 @@ The system employs two machine learning models as the core prediction mechanism:
 - Class Weight: Balanced (handles imbalanced classes)
 
 **Performance Metrics**:
-- Accuracy: 87.0%
-- Training Samples: 2,000
-- Test Samples: 500
-- Precision/Recall: Balanced across all classes
+- Accuracy: ~87% (varies with training data)
+- Precision/Recall/F1: Calculated per class (macro/micro/weighted averages)
+- Confusion Matrix: Available for detailed analysis
+- Training Samples: 80% of dataset
+- Test Samples: 20% of dataset
 
 **Why Decision Tree**:
 - Interpretable decision paths for administrators
@@ -191,6 +197,39 @@ The system employs two machine learning models as the core prediction mechanism:
 3. Skill Gap Count: 0.7%
 4. Average Proficiency: 0.5%
 5. Beginner Proficiency Count: 0.3%
+
+### Gradient Boosting Classifier
+
+**Purpose**: Classifies students into readiness levels (Ready, Developing, Entry-Level) using boosting ensemble
+
+**Model Specifications**:
+- Algorithm: Gradient Boosting Classifier
+- Number of Estimators: 100
+- Max Depth: 5 (prevents overfitting)
+- Learning Rate: 0.1
+- Min Samples Split: 20
+- Min Samples Leaf: 10
+- Max Features: sqrt
+- Subsample: 0.8 (80% of samples per tree)
+
+**Performance Metrics**:
+- Accuracy: ~88-92% (typically higher than Decision Tree)
+- Precision/Recall/F1: Calculated per class (macro/micro/weighted averages)
+- Confusion Matrix: Available for detailed analysis
+- Training Samples: 80% of dataset
+- Test Samples: 20% of dataset
+
+**Why Gradient Boosting**:
+- High accuracy through sequential learning
+- Reduces bias by correcting errors iteratively
+- Handles complex feature interactions
+- Robust to overfitting with proper hyperparameters
+- Provides feature importance insights
+
+**Top Features** (by importance):
+- Match Ratio: Typically highest importance
+- Average Proficiency: Significant contributor
+- Skill counts and proficiency distributions: Important factors
 
 ### Feature Engineering
 
@@ -468,6 +507,17 @@ This generates:
 python src/data_generation/populate_db.py --clear
 ```
 
+**CSV Data Ingestion**: To import data from CSV files:
+```bash
+# Import students from CSV
+python src/data_generation/populate_db.py --source csv --csv-path data/students.csv
+
+# Import students and skills from CSV
+python src/data_generation/populate_db.py --source csv --csv-path data/students.csv --skills-csv data/skills.csv
+```
+
+See `DATA_INGESTION.md` for detailed CSV format requirements.
+
 ### Step 8: Calculate Readiness Scores
 
 **Using ML models (recommended)**:
@@ -534,10 +584,16 @@ python src/data_generation/populate_db.py --clear
 python src/core/scoring.py
 ```
 
-**3. Train/Retrain ML Models**:
+**3. Train/Retrain ML Models** (trains all 3 models):
 ```bash
 python src/ml_models/train_models.py
 ```
+
+This will train:
+- Decision Tree Classifier
+- Gradient Boosting Classifier
+- Random Forest Regressor
+- Calculate and save comprehensive metrics (Precision, Recall, F1, RMSE, MAE, MAPE)
 
 **4. Update Scores with ML Predictions**:
 ```bash
@@ -575,10 +631,20 @@ The dashboard includes the following sections:
 - Importance-weighted gap analysis
 
 **ML Predictions**: Machine learning insights
-- Model performance metrics
+- Model performance metrics (all 3 models)
+- Comprehensive evaluation metrics (Precision, Recall, F1, RMSE, MAE)
+- Confusion matrix visualizations
+- Training data analysis and visualizations
 - Feature importance analysis
 - ML prediction distributions
 - Rule-based vs ML comparison
+- Model comparison table
+
+**New Prediction**: Input form for new student predictions
+- Enter student details and skills
+- Get predictions from all 3 ML models
+- View prediction probabilities
+- Compare model outputs
 
 **Data Explorer**: Student-level drill-down
 - Filterable student table

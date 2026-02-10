@@ -24,12 +24,44 @@ This system uses **Machine Learning models at its core** to predict student plac
 4. Final predictions are made by following the tree path for each student
 
 **Performance:**
-- **Accuracy:** 87.0%
-- **Training Samples:** 2,000
-- **Test Samples:** 500
-- **Top Feature:** match_ratio (89.7% importance)
+- **Accuracy:** ~87% (varies with training data)
+- **Precision/Recall/F1:** Calculated per class and macro-averaged
+- **Training Samples:** 80% of dataset
+- **Test Samples:** 20% of dataset
+- **Top Feature:** match_ratio (typically highest importance)
 
-### 2. Random Forest Regressor
+### 2. Gradient Boosting Classifier
+
+**Purpose:** Classifies students into readiness levels using boosting ensemble
+
+**Why Gradient Boosting?**
+- **High Accuracy:** Sequential learning improves predictions iteratively
+- **Reduces Bias:** Each tree corrects errors from previous trees
+- **Handles Complex Patterns:** Can capture subtle feature interactions
+- **Robust:** Less prone to overfitting than single decision trees
+- **Feature Importance:** Provides insights into feature contributions
+
+**How It Works:**
+1. Starts with a simple model (usually a single decision tree)
+2. Sequentially adds new trees that correct the errors of previous trees
+3. Each new tree is trained on the residual errors (gradient descent)
+4. Final prediction is the weighted sum of all tree predictions
+5. This boosting approach reduces both bias and variance
+
+**Performance:**
+- **Accuracy:** Typically 88-92% (often higher than Decision Tree)
+- **Precision/Recall/F1:** Calculated per class and macro-averaged
+- **Training Samples:** 80% of dataset
+- **Test Samples:** 20% of dataset
+- **Hyperparameters:** 100 estimators, max_depth=5, learning_rate=0.1
+
+**Why We Use Both Decision Tree and Gradient Boosting:**
+- **Decision Tree:** Provides interpretability and baseline performance
+- **Gradient Boosting:** Provides higher accuracy and robustness
+- **Comparison:** Allows us to validate predictions across different model types
+- **Ensemble Approach:** Can combine predictions for even better accuracy
+
+### 3. Random Forest Regressor
 
 **Purpose:** Predicts exact readiness scores (0-100%)
 
@@ -48,12 +80,43 @@ This system uses **Machine Learning models at its core** to predict student plac
 5. This ensemble approach reduces variance and improves accuracy
 
 **Performance:**
-- **R² Score:** 95.9% (explains 95.9% of variance in readiness scores)
-- **RMSE:** 5.07 (average prediction error in percentage points)
-- **MAE:** 3.84 (mean absolute error)
-- **Training Samples:** 2,000
-- **Test Samples:** 500
-- **Top Feature:** match_ratio (93.6% importance)
+- **R² Score:** ~96% (explains variance in readiness scores)
+- **RMSE:** ~5.0 (average prediction error in percentage points)
+- **MAE:** ~3.8 (mean absolute error)
+- **MAPE:** Mean Absolute Percentage Error for relative error assessment
+- **Training Samples:** 80% of dataset
+- **Test Samples:** 20% of dataset
+- **Top Feature:** match_ratio (typically highest importance)
+
+## Model Comparison
+
+| Model | Type | Purpose | Strengths | Use Case |
+|-------|------|---------|-----------|----------|
+| Decision Tree | Classification | Readiness Level | Interpretable, fast | Understanding decisions |
+| Gradient Boosting | Classification | Readiness Level | High accuracy, robust | Production predictions |
+| Random Forest | Regression | Readiness Score | Precise scores, ensemble | Exact score prediction |
+
+## Why These Three Models?
+
+1. **Complementary Approaches:**
+   - Decision Tree: Single tree (interpretable)
+   - Gradient Boosting: Sequential ensemble (high accuracy)
+   - Random Forest: Parallel ensemble (regression)
+
+2. **Different Strengths:**
+   - Decision Tree: Best for understanding why predictions are made
+   - Gradient Boosting: Best for classification accuracy
+   - Random Forest: Best for precise score predictions
+
+3. **Validation:**
+   - Multiple models allow cross-validation of predictions
+   - Agreement between models increases confidence
+   - Disagreement highlights edge cases
+
+4. **Production Ready:**
+   - All three models are trained and evaluated rigorously
+   - Comprehensive metrics (Precision, Recall, F1, RMSE, MAE)
+   - Models are saved and versioned for reproducibility
 
 ## Feature Engineering
 

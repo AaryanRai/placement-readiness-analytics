@@ -389,9 +389,10 @@ def load_student_table_data():
             if scores:
                 # Find the best score
                 best_score = max(scores, key=lambda x: x[0])
+                program = student.program.replace('BCA', 'Btech') if student.program else student.program
                 results.append({
                     'Name': student.name,
-                    'Program': student.program,
+                    'Program': program,
                     'Year': student.year_of_study,
                     'Best Role': best_score[2],
                     'Score': float(best_score[0]),
@@ -434,6 +435,18 @@ def load_skill_acquisition_trends():
         ).order_by('month').all()
         
         return pd.DataFrame(data, columns=['Month', 'Skills Acquired'])
+    finally:
+        session.close()
+
+@st.cache_data(ttl=0)  # No cache - always fetch fresh data
+def load_training_data():
+    """Load training data for visualizations."""
+    from src.ml_models.feature_extraction import extract_features_for_training
+    
+    session = get_db_session()
+    try:
+        df = extract_features_for_training(session)
+        return df
     finally:
         session.close()
 
@@ -932,19 +945,25 @@ def render_ml_section():
     st.markdown("""
     <div class="info-card" style="margin-bottom: 2rem;">
         <h3>🤖 Machine Learning Models at the Core</h3>
-        <p>This system uses <strong>two trained ML models</strong> as the primary method for predicting student readiness:</p>
+        <p>This system uses <strong>three trained ML models</strong> as the primary method for predicting student readiness:</p>
         <ol>
             <li><strong>Decision Tree Classifier</strong> - Classifies students into readiness levels (Ready/Developing/Entry-Level)</li>
+            <li><strong>Gradient Boosting Classifier</strong> - High-accuracy classification using boosting ensemble</li>
             <li><strong>Random Forest Regressor</strong> - Predicts exact readiness scores (0-100%)</li>
         </ol>
         <p><strong>Why These Models?</strong></p>
         <ul>
             <li><strong>Decision Tree:</strong> Interpretable, handles non-linear relationships, works well with categorical features</li>
+            <li><strong>Gradient Boosting:</strong> High accuracy through sequential learning, reduces bias and variance</li>
             <li><strong>Random Forest:</strong> High accuracy, reduces overfitting, captures complex feature interactions</li>
         </ul>
         <p><strong>How They Work:</strong> The models learn from 2,500 student-role combinations, analyzing 30 features including skill portfolios, proficiency levels, program types, and role requirements to make predictions.</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Training Data Visualizations
+    render_training_data_visualizations()
+    st.markdown("<br>", unsafe_allow_html=True)
     
     # Check if models exist
     from pathlib import Path
@@ -979,34 +998,167 @@ def render_ml_section():
     
     # Model Performance Metrics
     st.markdown("### Model Performance Metrics")
-    col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-left-color: #3b82f6;">
-            <div class="kpi-label">Classifier Accuracy</div>
-            <div class="kpi-value">{perf_metrics['classifier']['accuracy']*100:.1f}%</div>
-            <div class="kpi-trend">{perf_metrics['classifier']['model_type']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-left-color: #059669;">
-            <div class="kpi-label">Regressor R² Score</div>
-            <div class="kpi-value">{perf_metrics['regressor']['r2_score']*100:.1f}%</div>
-            <div class="kpi-trend">{perf_metrics['regressor']['model_type']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="kpi-card" style="border-left-color: #d97706;">
-            <div class="kpi-label">RMSE</div>
-            <div class="kpi-value">{perf_metrics['regressor']['rmse']:.2f}</div>
-            <div class="kpi-trend">Score Prediction Error</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Check if we have the new metrics structure
+    if 'decision_tree' in perf_metrics:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #3b82f6;">
+                <div class="kpi-label">Decision Tree</div>
+                <div class="kpi-value">{perf_metrics['decision_tree']['accuracy']*100:.1f}%</div>
+                <div class="kpi-trend">Accuracy</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            if 'gradient_boosting' in perf_metrics:
+                st.markdown(f"""
+                <div class="kpi-card" style="border-left-color: #8b5cf6;">
+                    <div class="kpi-label">Gradient Boosting</div>
+                    <div class="kpi-value">{perf_metrics['gradient_boosting']['accuracy']*100:.1f}%</div>
+                    <div class="kpi-trend">Accuracy</div>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.info("GB not trained")
+        
+        with col3:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #059669;">
+                <div class="kpi-label">Random Forest R²</div>
+                <div class="kpi-value">{perf_metrics['random_forest']['r2_score']*100:.1f}%</div>
+                <div class="kpi-trend">R² Score</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #d97706;">
+                <div class="kpi-label">RMSE</div>
+                <div class="kpi-value">{perf_metrics['random_forest']['rmse']:.2f}</div>
+                <div class="kpi-trend">Score Error</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Comprehensive Metrics Table
+        st.markdown("### Detailed Performance Metrics")
+        
+        # Classification metrics table
+        if perf_metrics['decision_tree'].get('per_class'):
+            st.markdown("#### Classification Metrics (Per Class)")
+            
+            metrics_data = []
+            for class_name, metrics in perf_metrics['decision_tree']['per_class'].items():
+                metrics_data.append({
+                    'Model': 'Decision Tree',
+                    'Class': class_name,
+                    'Precision': f"{metrics.get('precision', 0):.4f}",
+                    'Recall': f"{metrics.get('recall', 0):.4f}",
+                    'F1 Score': f"{metrics.get('f1_score', 0):.4f}",
+                    'Support': metrics.get('support', 0)
+                })
+            
+            if 'gradient_boosting' in perf_metrics and perf_metrics['gradient_boosting'].get('per_class'):
+                for class_name, metrics in perf_metrics['gradient_boosting']['per_class'].items():
+                    metrics_data.append({
+                        'Model': 'Gradient Boosting',
+                        'Class': class_name,
+                        'Precision': f"{metrics.get('precision', 0):.4f}",
+                        'Recall': f"{metrics.get('recall', 0):.4f}",
+                        'F1 Score': f"{metrics.get('f1_score', 0):.4f}",
+                        'Support': metrics.get('support', 0)
+                    })
+            
+            metrics_df = pd.DataFrame(metrics_data)
+            st.dataframe(metrics_df, use_container_width=True)
+        
+        # Confusion Matrix Visualization
+        if perf_metrics['decision_tree'].get('confusion_matrix'):
+            st.markdown("#### Confusion Matrix - Decision Tree")
+            cm = perf_metrics['decision_tree']['confusion_matrix']
+            classes = perf_metrics['decision_tree'].get('classes', ['Ready', 'Developing', 'Entry-Level'])
+            
+            fig = px.imshow(
+                cm,
+                labels=dict(x="Predicted", y="Actual", color="Count"),
+                x=classes,
+                y=classes,
+                text_auto=True,
+                color_continuous_scale='Blues',
+                title="Decision Tree Confusion Matrix"
+            )
+            fig.update_layout(
+                font=dict(family="Arial, sans-serif", size=12),
+                title=dict(font=dict(size=16, color='#ffffff'))
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Model Comparison Table
+        st.markdown("#### Model Comparison Summary")
+        comparison_data = []
+        
+        if 'decision_tree' in perf_metrics:
+            comparison_data.append({
+                'Model': 'Decision Tree Classifier',
+                'Accuracy': f"{perf_metrics['decision_tree']['accuracy']*100:.2f}%",
+                'Precision (Macro)': f"{perf_metrics['decision_tree'].get('precision_macro', 0)*100:.2f}%",
+                'Recall (Macro)': f"{perf_metrics['decision_tree'].get('recall_macro', 0)*100:.2f}%",
+                'F1 (Macro)': f"{perf_metrics['decision_tree'].get('f1_macro', 0)*100:.2f}%"
+            })
+        
+        if 'gradient_boosting' in perf_metrics:
+            comparison_data.append({
+                'Model': 'Gradient Boosting Classifier',
+                'Accuracy': f"{perf_metrics['gradient_boosting']['accuracy']*100:.2f}%",
+                'Precision (Macro)': f"{perf_metrics['gradient_boosting'].get('precision_macro', 0)*100:.2f}%",
+                'Recall (Macro)': f"{perf_metrics['gradient_boosting'].get('recall_macro', 0)*100:.2f}%",
+                'F1 (Macro)': f"{perf_metrics['gradient_boosting'].get('f1_macro', 0)*100:.2f}%"
+            })
+        
+        if 'random_forest' in perf_metrics:
+            comparison_data.append({
+                'Model': 'Random Forest Regressor',
+                'R² Score': f"{perf_metrics['random_forest']['r2_score']*100:.2f}%",
+                'RMSE': f"{perf_metrics['random_forest']['rmse']:.2f}",
+                'MAE': f"{perf_metrics['random_forest']['mae']:.2f}",
+                'MAPE': f"{perf_metrics['random_forest'].get('mape', 0):.2f}%"
+            })
+        
+        if comparison_data:
+            comparison_df = pd.DataFrame(comparison_data)
+            st.dataframe(comparison_df, use_container_width=True)
+    else:
+        # Fallback to old format
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #3b82f6;">
+                <div class="kpi-label">Classifier Accuracy</div>
+                <div class="kpi-value">{perf_metrics.get('classifier', {}).get('accuracy', 0)*100:.1f}%</div>
+                <div class="kpi-trend">{perf_metrics.get('classifier', {}).get('model_type', 'N/A')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #059669;">
+                <div class="kpi-label">Regressor R² Score</div>
+                <div class="kpi-value">{perf_metrics.get('regressor', {}).get('r2_score', 0)*100:.1f}%</div>
+                <div class="kpi-trend">{perf_metrics.get('regressor', {}).get('model_type', 'N/A')}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown(f"""
+            <div class="kpi-card" style="border-left-color: #d97706;">
+                <div class="kpi-label">RMSE</div>
+                <div class="kpi-value">{perf_metrics.get('regressor', {}).get('rmse', 0):.2f}</div>
+                <div class="kpi-trend">Score Prediction Error</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
@@ -1260,6 +1412,286 @@ def render_year_progression():
         </div>
         """, unsafe_allow_html=True)
 
+def render_training_data_visualizations():
+    """Render training data analysis visualizations."""
+    st.markdown('<div class="section-header">Training Data Analysis</div>', unsafe_allow_html=True)
+    
+    df_train = load_training_data()
+    
+    if df_train.empty:
+        st.info("No training data available. Please train models first.")
+        return
+    
+    # Data split visualization
+    st.markdown("### Data Split")
+    col1, col2, col3 = st.columns(3)
+    train_size = int(len(df_train) * 0.8)
+    test_size = int(len(df_train) * 0.2)
+    
+    with col1:
+        st.metric("Total Samples", len(df_train))
+    with col2:
+        st.metric("Training Set", train_size)
+    with col3:
+        st.metric("Test Set", test_size)
+    
+    # Target distribution
+    st.markdown("### Target Distribution (Readiness Levels)")
+    if 'readiness_level' in df_train.columns:
+        level_counts = df_train['readiness_level'].value_counts()
+        fig = px.pie(
+            values=level_counts.values,
+            names=level_counts.index,
+            title="Readiness Level Distribution in Training Data",
+            color_discrete_map={
+                'Ready': '#059669',
+                'Developing': '#d97706',
+                'Entry-Level': '#dc2626'
+            }
+        )
+        fig.update_layout(
+            font=dict(family="Arial, sans-serif", size=12),
+            title=dict(font=dict(size=16, color='#ffffff'))
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Feature distributions
+    st.markdown("### Feature Distributions")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if 'total_skills' in df_train.columns:
+            fig = px.histogram(
+                df_train,
+                x='total_skills',
+                nbins=30,
+                title="Total Skills Distribution",
+                labels={'total_skills': 'Number of Skills', 'count': 'Frequency'}
+            )
+            fig.update_layout(
+                font=dict(family="Arial, sans-serif", size=12),
+                title=dict(font=dict(size=14, color='#ffffff')),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title=dict(font=dict(color='#ffffff'))),
+                yaxis=dict(title=dict(font=dict(color='#ffffff')))
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        if 'avg_proficiency' in df_train.columns:
+            fig = px.histogram(
+                df_train,
+                x='avg_proficiency',
+                nbins=30,
+                title="Average Proficiency Distribution",
+                labels={'avg_proficiency': 'Average Proficiency', 'count': 'Frequency'}
+            )
+            fig.update_layout(
+                font=dict(family="Arial, sans-serif", size=12),
+                title=dict(font=dict(size=14, color='#ffffff')),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title=dict(font=dict(color='#ffffff'))),
+                yaxis=dict(title=dict(font=dict(color='#ffffff')))
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # Feature correlation heatmap
+    st.markdown("### Feature Correlation Heatmap (Top 15 Features)")
+    from src.ml_models.model_info import get_model_feature_importance
+    
+    feature_importance = get_model_feature_importance()
+    if feature_importance.get('classifier') is not None:
+        top_features = feature_importance['classifier'].head(15)['Feature'].tolist()
+        
+        # Select only top features for correlation
+        correlation_features = [f for f in top_features if f in df_train.columns]
+        if len(correlation_features) > 1:
+            corr_df = df_train[correlation_features].corr()
+            
+            fig = px.imshow(
+                corr_df,
+                title="Feature Correlation Matrix",
+                color_continuous_scale='RdBu',
+                aspect="auto"
+            )
+            fig.update_layout(
+                font=dict(family="Arial, sans-serif", size=11),
+                title=dict(font=dict(size=16, color='#ffffff')),
+                height=600
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+def render_prediction_form():
+    """Render input form for new predictions."""
+    st.markdown('<div class="section-header">New Student Prediction</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="info-card" style="margin-bottom: 2rem;">
+        <h3>🔮 Predict Readiness for New Student</h3>
+        <p>Enter student details and skills to get predictions from all 3 ML models:</p>
+        <ul>
+            <li><strong>Decision Tree Classifier</strong> - Interpretable predictions</li>
+            <li><strong>Gradient Boosting Classifier</strong> - High accuracy predictions</li>
+            <li><strong>Random Forest Regressor</strong> - Precise score predictions</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    session = get_db_session()
+    try:
+        # Get available roles and skills
+        roles = session.query(JobRole).all()
+        skills = session.query(SkillsMaster).all()
+        
+        with st.form("prediction_form"):
+            st.markdown("### Student Information")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                student_name = st.text_input("Student Name", placeholder="John Doe")
+                program = st.selectbox("Program", ["BBA", "Btech", "B.Com"])
+                year_of_study = st.slider("Year of Study", 1, 4, 2)
+            
+            with col2:
+                enrollment_year = st.number_input("Enrollment Year", min_value=2020, max_value=2026, value=2024)
+                target_role = st.selectbox("Target Career Role", [r.role_name for r in roles])
+            
+            st.markdown("### Skills Portfolio")
+            st.markdown("Select skills and their proficiency levels:")
+            
+            # Skills selection
+            selected_skills = {}
+            skill_cols = st.columns(3)
+            
+            for i, skill in enumerate(skills[:30]):  # Limit to first 30 for UI
+                col_idx = i % 3
+                with skill_cols[col_idx]:
+                    proficiency = st.selectbox(
+                        skill.skill_name,
+                        ["None", "Beginner", "Intermediate", "Advanced", "Expert"],
+                        key=f"skill_{skill.skill_id}",
+                        index=0
+                    )
+                    if proficiency != "None":
+                        selected_skills[skill.skill_id] = {
+                            'name': skill.skill_name,
+                            'proficiency': proficiency,
+                            'proficiency_score': {"Beginner": 0.25, "Intermediate": 0.50, "Advanced": 0.75, "Expert": 1.00}[proficiency]
+                        }
+            
+            submitted = st.form_submit_button("Get Predictions", type="primary")
+            
+            if submitted:
+                if not student_name:
+                    st.error("Please enter a student name.")
+                elif not selected_skills:
+                    st.error("Please select at least one skill.")
+                else:
+                    # Create temporary student and get predictions
+                    with st.spinner("Calculating predictions..."):
+                        try:
+                            # Get role ID
+                            role = next((r for r in roles if r.role_name == target_role), None)
+                            if not role:
+                                st.error("Invalid role selected.")
+                                return
+                            
+                            # Create temporary student record
+                            from src.database.models import Student, StudentSkills
+                            from datetime import date
+                            
+                            temp_student = Student(
+                                name=student_name,
+                                email=f"temp_{student_name.lower().replace(' ', '_')}@temp.com",
+                                program=program,
+                                year_of_study=year_of_study,
+                                enrollment_year=enrollment_year,
+                                target_role=target_role
+                            )
+                            session.add(temp_student)
+                            session.flush()
+                            
+                            # Add skills
+                            for skill_id, skill_data in selected_skills.items():
+                                temp_skill = StudentSkills(
+                                    student_id=temp_student.student_id,
+                                    skill_id=skill_id,
+                                    proficiency_level=skill_data['proficiency'],
+                                    proficiency_score=skill_data['proficiency_score'],
+                                    acquisition_date=date.today(),
+                                    source="Manual Entry"
+                                )
+                                session.add(temp_skill)
+                            
+                            session.commit()
+                            
+                            # Get predictions from all models
+                            from src.ml_models.predict import predict_readiness_ml
+                            
+                            predictions = predict_readiness_ml(temp_student.student_id, role.role_id, session)
+                            
+                            if predictions.get('error'):
+                                st.error(f"Prediction error: {predictions['error']}")
+                            else:
+                                st.success("✓ Predictions generated successfully!")
+                                
+                                # Display predictions
+                                st.markdown("### Prediction Results")
+                                
+                                col1, col2, col3 = st.columns(3)
+                                
+                                with col1:
+                                    st.markdown(f"""
+                                    <div class="kpi-card" style="border-left-color: #3b82f6;">
+                                        <div class="kpi-label">Decision Tree</div>
+                                        <div class="kpi-value">{predictions.get('decision_tree', {}).get('level', 'N/A')}</div>
+                                        <div class="kpi-trend">Classification</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                with col2:
+                                    if 'gradient_boosting' in predictions:
+                                        st.markdown(f"""
+                                        <div class="kpi-card" style="border-left-color: #059669;">
+                                            <div class="kpi-label">Gradient Boosting</div>
+                                            <div class="kpi-value">{predictions['gradient_boosting'].get('level', 'N/A')}</div>
+                                            <div class="kpi-trend">Classification</div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    else:
+                                        st.info("Gradient Boosting model not available")
+                                
+                                with col3:
+                                    st.markdown(f"""
+                                    <div class="kpi-card" style="border-left-color: #d97706;">
+                                        <div class="kpi-label">Random Forest</div>
+                                        <div class="kpi-value">{predictions.get('random_forest', {}).get('score', 0):.1f}%</div>
+                                        <div class="kpi-trend">Score Prediction</div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                
+                                # Show probabilities
+                                if 'decision_tree' in predictions and 'probabilities' in predictions['decision_tree']:
+                                    st.markdown("### Prediction Probabilities (Decision Tree)")
+                                    prob_df = pd.DataFrame([
+                                        {'Level': k, 'Probability': f"{v*100:.2f}%"}
+                                        for k, v in predictions['decision_tree']['probabilities'].items()
+                                    ])
+                                    st.dataframe(prob_df, use_container_width=True)
+                                
+                                # Cleanup temporary student
+                                session.query(StudentSkills).filter_by(student_id=temp_student.student_id).delete()
+                                session.delete(temp_student)
+                                session.commit()
+                                
+                        except Exception as e:
+                            session.rollback()
+                            st.error(f"Error generating predictions: {str(e)}")
+    finally:
+        session.close()
+
 def render_about_section():
     """Render about section with data information."""
     st.markdown('<div class="section-header">About the System</div>', unsafe_allow_html=True)
@@ -1356,6 +1788,7 @@ def main():
                 "Career Readiness",
                 "Skill Gap Analysis",
                 "ML Predictions",
+                "New Prediction",
                 "Data Explorer"
             ],
             label_visibility="collapsed"
@@ -1383,6 +1816,8 @@ def main():
         render_skill_gap_section()
     elif page == "ML Predictions":
         render_ml_section()
+    elif page == "New Prediction":
+        render_prediction_form()
     elif page == "Data Explorer":
         render_data_table()
 

@@ -1,0 +1,126 @@
+{
+  "decision_tree": {
+    "accuracy": 0.856,
+    "precision_macro": 0.6891119221411192,
+    "recall_macro": 0.8152096857818929,
+    "f1_macro": 0.7314321333956677,
+    "precision_micro": 0.856,
+    "recall_micro": 0.856,
+    "f1_micro": 0.856,
+    "precision_weighted": 0.8952985401459855,
+    "recall_weighted": 0.856,
+    "f1_weighted": 0.8688716222533893,
+    "per_class": {
+      "Developing": {
+        "precision": 0.6423357664233577,
+        "recall": 0.7927927927927928,
+        "f1_score": 0.7096774193548387,
+        "support": 111
+      },
+      "Entry-Level": {
+        "precision": 1.0,
+        "recall": 0.8801089918256131,
+        "f1_score": 0.936231884057971,
+        "support": 367
+      },
+      "Ready": {
+        "precision": 0.425,
+        "recall": 0.7727272727272727,
+        "f1_score": 0.5483870967741935,
+        "support": 22
+      }
+    },
+    "confusion_matrix": [
+      [
+        88,
+        0,
+        23
+      ],
+      [
+        44,
+        323,
+        0
+      ],
+      [
+        5,
+        0,
+        17
+      ]
+    ],
+    "classes": [
+      "Developing",
+      "Entry-Level",
+      "Ready"
+    ]
+  },
+  "gradient_boosting": {
+    "accuracy": 0.918,
+    "precision_macro": 0.8666291291291291,
+    "recall_macro": 0.8211636208911414,
+    "f1_macro": 0.8413603608537014,
+    "precision_micro": 0.918,
+    "recall_micro": 0.918,
+    "f1_micro": 0.918,
+    "precision_weighted": 0.9173173423423423,
+    "recall_weighted": 0.918,
+    "f1_weighted": 0.9173100437478324,
+    "per_class": {
+      "Developing": {
+        "precision": 0.8125,
+        "recall": 0.8198198198198198,
+        "f1_score": 0.8161434977578476,
+        "support": 111
+      },
+      "Entry-Level": {
+        "precision": 0.9540540540540541,
+        "recall": 0.9618528610354223,
+        "f1_score": 0.9579375848032564,
+        "support": 367
+      },
+      "Ready": {
+        "precision": 0.8333333333333334,
+        "recall": 0.6818181818181818,
+        "f1_score": 0.75,
+        "support": 22
+      }
+    },
+    "confusion_matrix": [
+      [
+        91,
+        17,
+        3
+      ],
+      [
+        14,
+        353,
+        0
+      ],
+      [
+        7,
+        0,
+        15
+      ]
+    ],
+    "classes": [
+      "Developing",
+      "Entry-Level",
+      "Ready"
+    ]
+  },
+  "random_forest": {
+    "mse": 56.49389958519428,
+    "rmse": 7.516242384675622,
+    "mae": 5.453678300161686,
+    "r2_score": 0.9155243771988942,
+    "mape": 20.676640735412946,
+    "mean_error": 0.510345756476493,
+    "median_absolute_error": 4.245571884922851
+  },
+  "metadata": {
+    "training_date": "2026-02-10T19:27:29.705733",
+    "total_samples": 2500,
+    "training_samples": 2000.0,
+    "test_samples": 500.0,
+    "feature_count": 29
+  }
+}

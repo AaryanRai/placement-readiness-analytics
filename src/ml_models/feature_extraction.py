@@ -113,6 +113,9 @@ def extract_features_for_training(session: Session = None) -> pd.DataFrame:
             }
             
             # Build feature vector
+            # NOTE: We intentionally exclude 'match_ratio' from ML features to avoid
+            # an overly dominant shortcut feature. The models learn from underlying
+            # portfolio and role features instead.
             features = {
                 # Student demographics
                 'year_of_study': student.year_of_study,
@@ -143,11 +146,10 @@ def extract_features_for_training(session: Session = None) -> pd.DataFrame:
                 'source_Project': source_counts['Project'],
                 'source_Workshop': source_counts['Workshop'],
                 
-                # Role-specific features    
+                # Role-specific features (without direct match_ratio shortcut)
                 'required_skills_count': score.required_skills_count,
                 'matched_skills_count': score.matched_skills_count,
                 'skill_gap_count': score.skill_gap_count,
-                'match_ratio': float(score.matched_skills_count) / max(score.required_skills_count, 1),
                 
                 # Role encoding
                 **role_encoded,
@@ -243,6 +245,9 @@ def extract_features_for_prediction(student_id: int, role_id: int, session: Sess
     }
     
     # Build feature vector
+    # NOTE: We intentionally exclude 'match_ratio' from ML features to avoid
+    # an overly dominant shortcut feature. The models learn from underlying
+    # portfolio and role features instead.
     features = {
         # Student demographics
         'year_of_study': student.year_of_study,
@@ -273,11 +278,10 @@ def extract_features_for_prediction(student_id: int, role_id: int, session: Sess
         'source_Project': source_counts['Project'],
         'source_Workshop': source_counts['Workshop'],
         
-        # Role-specific features
+        # Role-specific features (without direct match_ratio shortcut)
         'required_skills_count': required_count,
         'matched_skills_count': matched_count,
         'skill_gap_count': skill_gap_count,
-        'match_ratio': float(matched_count) / max(required_count, 1),
         
         # Role encoding
         **role_encoded
