@@ -117,6 +117,10 @@ def extract_features_for_training(session: Session = None) -> pd.DataFrame:
             # an overly dominant shortcut feature. The models learn from underlying
             # portfolio and role features instead.
             features = {
+                # IDs (for leakage-safe splitting / join-back; not used as ML features)
+                'student_id': int(student_id),
+                'role_id': int(role_id),
+
                 # Student demographics
                 'year_of_study': student.year_of_study,
                 'enrollment_year': student.enrollment_year,

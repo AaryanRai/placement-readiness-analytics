@@ -26,8 +26,13 @@ echo "[3/4] Calculating readiness scores..."
 python3 src/core/scoring.py
 echo ""
 
-# Step 4: Start Dashboard
-echo "[4/4] Starting Streamlit dashboard..."
+# Step 4: Train ML Models (baseline + advanced)
+echo "[4/5] Training ML models (baseline + advanced)..."
+python3 src/ml_models/train_models.py
+echo ""
+
+# Step 5: Start Dashboard
+echo "[5/5] Starting Streamlit dashboard..."
 echo ""
 echo "✓ Dashboard will open in your browser"
 echo "  Press Ctrl+C to stop the server"

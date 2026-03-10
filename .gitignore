@@ -52,6 +52,7 @@ notebooks/
 # Models (exclude large model files)
 models/*.pkl
 models/*.joblib
+models/data_quality_report.json
 !models/.gitkeep
 
 # Logs

@@ -140,7 +140,15 @@ def test_prediction_functions():
         
         if student and role:
             # Test loading models
-            classifier, gb_classifier, regressor, label_encoder = load_models()
+            (
+                classifier,
+                gb_classifier,
+                regressor,
+                label_encoder,
+                baseline_logreg,
+                baseline_logreg_le,
+                baseline_ridge,
+            ) = load_models()
             
             # At least Decision Tree and Random Forest should be available
             if classifier is None or regressor is None:

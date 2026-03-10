@@ -15,6 +15,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import (
     accuracy_score, classification_report, mean_squared_error, r2_score,
     precision_score, recall_score, f1_score, confusion_matrix
@@ -27,6 +28,13 @@ from datetime import datetime
 
 from src.ml_models.feature_extraction import extract_features_for_training
 from src.database.connection import get_db_session
+from src.preprocessing.preprocessor import (
+    PreprocessSpec,
+    build_preprocessor,
+    group_train_test_split,
+    validate_training_frame,
+)
+from src.preprocessing.data_quality import generate_quality_report
 
 # Feature columns (excluding target variables)
 # NOTE: We intentionally exclude 'match_ratio' to prevent it from becoming an
@@ -43,6 +51,100 @@ FEATURE_COLUMNS = [
     'role_Data Analyst', 'role_Full-Stack Developer', 'role_Digital Marketer',
     'role_Business Analyst', 'role_UX/UI Designer'
 ]
+
+
+def train_baseline_logistic_regression(
+    df: pd.DataFrame,
+    spec: PreprocessSpec,
+    save_path: str | None = None,
+):
+    """Baseline classifier: Logistic Regression on preprocessed features."""
+    print("\n" + "=" * 60)
+    print("Training Baseline Logistic Regression (Readiness Level)")
+    print("=" * 60)
+
+    X_all = df[spec.feature_columns].copy()
+    y_all = df["readiness_level"].copy()
+
+    le = LabelEncoder()
+    y_encoded = le.fit_transform(y_all)
+
+    # Leakage-safe split by student
+    train_df, test_df = group_train_test_split(df, group_col="student_id", test_size=0.2, random_state=42)
+    X_train_raw = train_df[spec.feature_columns].copy()
+    y_train = le.transform(train_df["readiness_level"].copy())
+    X_test_raw = test_df[spec.feature_columns].copy()
+    y_test = le.transform(test_df["readiness_level"].copy())
+
+    pre = build_preprocessor(spec.feature_columns)
+    X_train = pre.fit_transform(X_train_raw)
+    X_test = pre.transform(X_test_raw)
+
+    model = LogisticRegression(
+        max_iter=2000,
+        class_weight="balanced",
+        n_jobs=-1,
+        solver="lbfgs",
+    )
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)
+    acc = accuracy_score(y_test, y_pred)
+
+    print(f"\nBaseline Accuracy: {acc:.4f} ({acc*100:.2f}%)")
+    print("\nClassification Report:")
+    print(classification_report(y_test, y_pred, target_names=le.classes_))
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        joblib.dump({"model": model, "preprocessor": pre}, save_path)
+        joblib.dump(le, save_path.replace(".pkl", "_label_encoder.pkl"))
+        print(f"\n✓ Baseline model saved to: {save_path}")
+
+    return model, pre, le, y_test, y_pred, y_proba, le.classes_
+
+
+def train_baseline_ridge_regression(
+    df: pd.DataFrame,
+    spec: PreprocessSpec,
+    save_path: str | None = None,
+):
+    """Baseline regressor: Ridge Regression on preprocessed features."""
+    print("\n" + "=" * 60)
+    print("Training Baseline Ridge Regression (Readiness Score)")
+    print("=" * 60)
+
+    train_df, test_df = group_train_test_split(df, group_col="student_id", test_size=0.2, random_state=42)
+    X_train_raw = train_df[spec.feature_columns].copy()
+    y_train = train_df["readiness_score"].astype(float).copy()
+    X_test_raw = test_df[spec.feature_columns].copy()
+    y_test = test_df["readiness_score"].astype(float).copy()
+
+    pre = build_preprocessor(spec.feature_columns)
+    X_train = pre.fit_transform(X_train_raw)
+    X_test = pre.transform(X_test_raw)
+
+    model = Ridge(alpha=1.0, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = float(np.sqrt(mse))
+    r2 = r2_score(y_test, y_pred)
+    mae = float(np.mean(np.abs(y_test - y_pred)))
+
+    print("\nBaseline Performance:")
+    print(f"  RMSE: {rmse:.4f}")
+    print(f"  R² Score: {r2:.4f} ({r2*100:.2f}%)")
+    print(f"  Mean Absolute Error: {mae:.4f}")
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        joblib.dump({"model": model, "preprocessor": pre}, save_path)
+        print(f"\n✓ Baseline model saved to: {save_path}")
+
+    return model, pre, y_test, y_pred
 
 def train_classifier(df: pd.DataFrame, save_path: str = None) -> DecisionTreeClassifier:
     """
@@ -302,6 +404,13 @@ def main():
     missing_cols = set(FEATURE_COLUMNS) - set(df.columns)
     if missing_cols:
         print(f"WARNING: Missing feature columns: {missing_cols}")
+
+    # Validate schema (includes student_id/role_id/targets)
+    spec = PreprocessSpec(feature_columns=list(FEATURE_COLUMNS))
+    validate_training_frame(df, spec)
+
+    # Save a data quality report for the training frame
+    quality = generate_quality_report(df, target_class_col="readiness_level")
     
     # Train models
     print("\n[2/4] Training models...")
@@ -309,6 +418,23 @@ def main():
     # Create models directory
     models_dir = project_root / 'models'
     models_dir.mkdir(exist_ok=True)
+
+    # Save quality report
+    quality_path = models_dir / "data_quality_report.json"
+    with open(quality_path, "w") as f:
+        json.dump(quality.to_dict(), f, indent=2)
+    print(f"✓ Data quality report saved to: {quality_path}")
+
+    # Baseline models (requested as remarks)
+    baseline_clf_path = models_dir / "baseline_logistic_regression.pkl"
+    baseline_reg_path = models_dir / "baseline_ridge_regression.pkl"
+
+    bl_clf, bl_clf_pre, bl_le, bl_y_test, bl_y_pred, bl_y_proba, bl_classes = train_baseline_logistic_regression(
+        df, spec, str(baseline_clf_path)
+    )
+    bl_reg, bl_reg_pre, bl_reg_y_test, bl_reg_y_pred = train_baseline_ridge_regression(
+        df, spec, str(baseline_reg_path)
+    )
     
     # Train Decision Tree Classifier
     classifier_path = models_dir / 'readiness_classifier.pkl'
@@ -327,6 +453,14 @@ def main():
     # Calculate comprehensive metrics
     print("\n[3/4] Calculating comprehensive evaluation metrics...")
     metrics = {}
+
+    # Baseline metrics
+    metrics["baseline_logistic_regression"] = calculate_comprehensive_metrics(
+        bl_y_test, bl_y_pred, bl_y_proba, bl_classes, "classification"
+    )
+    metrics["baseline_ridge_regression"] = calculate_comprehensive_metrics(
+        bl_reg_y_test, bl_reg_y_pred, None, None, "regression"
+    )
     
     # Decision Tree metrics
     dt_y_pred = classifier.predict(dt_X_test)
@@ -354,7 +488,13 @@ def main():
         'total_samples': len(df),
         'training_samples': len(df) * 0.8,
         'test_samples': len(df) * 0.2,
-        'feature_count': len(FEATURE_COLUMNS)
+        'feature_count': len(FEATURE_COLUMNS),
+        'split_strategy': 'grouped_by_student_id',
+        'artifacts': {
+            'data_quality_report': str(quality_path),
+            'baseline_logistic_regression': str(baseline_clf_path),
+            'baseline_ridge_regression': str(baseline_reg_path),
+        },
     }
     
     # Save metrics to JSON
@@ -364,6 +504,8 @@ def main():
     print(f"✓ Metrics saved to: {metrics_path}")
     
     print("\n[4/4] Summary:")
+    print(f"  Baseline Logistic Accuracy: {metrics['baseline_logistic_regression']['accuracy']:.4f}")
+    print(f"  Baseline Ridge R²: {metrics['baseline_ridge_regression']['r2_score']:.4f}")
     print(f"  Decision Tree Accuracy: {metrics['decision_tree']['accuracy']:.4f}")
     print(f"  Gradient Boosting Accuracy: {metrics['gradient_boosting']['accuracy']:.4f}")
     print(f"  Random Forest R²: {metrics['random_forest']['r2_score']:.4f}")
@@ -372,6 +514,8 @@ def main():
     print("Training Complete!")
     print("="*60)
     print(f"\nModels saved in: {models_dir}")
+    print(f"  - Baseline Logistic Regression: {baseline_clf_path.name}")
+    print(f"  - Baseline Ridge Regression: {baseline_reg_path.name}")
     print(f"  - Decision Tree Classifier: {classifier_path.name}")
     print(f"  - Gradient Boosting Classifier: {gb_classifier_path.name}")
     print(f"  - Random Forest Regressor: {regressor_path.name}")

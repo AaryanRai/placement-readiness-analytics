@@ -945,7 +945,13 @@ def render_ml_section():
     st.markdown("""
     <div class="info-card" style="margin-bottom: 2rem;">
         <h3>🤖 Machine Learning Models at the Core</h3>
-        <p>This system uses <strong>three trained ML models</strong> as the primary method for predicting student readiness:</p>
+        <p>This system uses a <strong>baseline-first ML approach</strong> (as recommended in evaluation remarks), then compares against stronger ensemble models.</p>
+        <p><strong>Baselines (no rules):</strong></p>
+        <ol>
+            <li><strong>Logistic Regression</strong> - Baseline classification of readiness level (Ready/Developing/Entry-Level)</li>
+            <li><strong>Ridge Regression</strong> - Baseline prediction of readiness score (0-100%)</li>
+        </ol>
+        <p><strong>Advanced Models:</strong></p>
         <ol>
             <li><strong>Decision Tree Classifier</strong> - Classifies students into readiness levels (Ready/Developing/Entry-Level)</li>
             <li><strong>Gradient Boosting Classifier</strong> - High-accuracy classification using boosting ensemble</li>
@@ -953,11 +959,12 @@ def render_ml_section():
         </ol>
         <p><strong>Why These Models?</strong></p>
         <ul>
+            <li><strong>Logistic/Ridge (Baselines):</strong> fast, scalable, strong first benchmark, easy to interpret</li>
             <li><strong>Decision Tree:</strong> Interpretable, handles non-linear relationships, works well with categorical features</li>
             <li><strong>Gradient Boosting:</strong> High accuracy through sequential learning, reduces bias and variance</li>
             <li><strong>Random Forest:</strong> High accuracy, reduces overfitting, captures complex feature interactions</li>
         </ul>
-        <p><strong>How They Work:</strong> The models learn from 2,500 student-role combinations, analyzing 30 features including skill portfolios, proficiency levels, program types, and role requirements to make predictions.</p>
+        <p><strong>How They Work:</strong> The models learn from student-role combinations, analyzing engineered portfolio + role features to predict readiness score and level.</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1001,6 +1008,45 @@ def render_ml_section():
     
     # Check if we have the new metrics structure
     if 'decision_tree' in perf_metrics:
+        # Baselines row (if present)
+        if 'baseline_logistic_regression' in perf_metrics or 'baseline_ridge_regression' in perf_metrics:
+            b1, b2, b3, b4 = st.columns(4)
+            with b1:
+                if 'baseline_logistic_regression' in perf_metrics:
+                    st.markdown(f"""
+                    <div class="kpi-card" style="border-left-color: #0ea5e9;">
+                        <div class="kpi-label">Baseline Logistic</div>
+                        <div class="kpi-value">{perf_metrics['baseline_logistic_regression']['accuracy']*100:.1f}%</div>
+                        <div class="kpi-trend">Accuracy</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("Baseline Logistic not trained")
+            with b2:
+                if 'baseline_ridge_regression' in perf_metrics:
+                    st.markdown(f"""
+                    <div class="kpi-card" style="border-left-color: #22c55e;">
+                        <div class="kpi-label">Baseline Ridge R²</div>
+                        <div class="kpi-value">{perf_metrics['baseline_ridge_regression']['r2_score']*100:.1f}%</div>
+                        <div class="kpi-trend">R² Score</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.info("Baseline Ridge not trained")
+            with b3:
+                if 'baseline_ridge_regression' in perf_metrics:
+                    st.markdown(f"""
+                    <div class="kpi-card" style="border-left-color: #f59e0b;">
+                        <div class="kpi-label">Baseline RMSE</div>
+                        <div class="kpi-value">{perf_metrics['baseline_ridge_regression']['rmse']:.2f}</div>
+                        <div class="kpi-trend">Score Error</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='height: 1px;'></div>", unsafe_allow_html=True)
+            with b4:
+                st.markdown("<div style='height: 1px;'></div>", unsafe_allow_html=True)
+
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -1099,6 +1145,24 @@ def render_ml_section():
         st.markdown("#### Model Comparison Summary")
         comparison_data = []
         
+        if 'baseline_logistic_regression' in perf_metrics:
+            comparison_data.append({
+                'Model': 'Baseline Logistic Regression',
+                'Accuracy': f"{perf_metrics['baseline_logistic_regression']['accuracy']*100:.2f}%",
+                'Precision (Macro)': f"{perf_metrics['baseline_logistic_regression'].get('precision_macro', 0)*100:.2f}%",
+                'Recall (Macro)': f"{perf_metrics['baseline_logistic_regression'].get('recall_macro', 0)*100:.2f}%",
+                'F1 (Macro)': f"{perf_metrics['baseline_logistic_regression'].get('f1_macro', 0)*100:.2f}%"
+            })
+
+        if 'baseline_ridge_regression' in perf_metrics:
+            comparison_data.append({
+                'Model': 'Baseline Ridge Regression',
+                'R² Score': f"{perf_metrics['baseline_ridge_regression']['r2_score']*100:.2f}%",
+                'RMSE': f"{perf_metrics['baseline_ridge_regression']['rmse']:.2f}",
+                'MAE': f"{perf_metrics['baseline_ridge_regression']['mae']:.2f}",
+                'MAPE': f"{perf_metrics['baseline_ridge_regression'].get('mape', 0):.2f}%"
+            })
+
         if 'decision_tree' in perf_metrics:
             comparison_data.append({
                 'Model': 'Decision Tree Classifier',
@@ -1162,8 +1226,8 @@ def render_ml_section():
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Comparison: Rule-based vs ML
-    st.markdown("### Rule-Based vs ML Prediction Comparison")
+    # Comparison: Baseline vs Advanced (and rule-based bootstrap)
+    st.markdown("### Baseline vs Advanced Prediction Comparison")
     
     session = get_db_session()
     try:
@@ -1185,15 +1249,20 @@ def render_ml_section():
                 ml_result = predict_readiness_ml(student.student_id, role.role_id, session)
                 
                 if not ml_result.get('error'):
+                    baseline_level = ml_result.get("baseline_logistic_regression", {}).get("level", "N/A")
+                    baseline_score = ml_result.get("baseline_ridge_regression", {}).get("score", None)
+                    baseline_score_str = f"{baseline_score:.1f}%" if isinstance(baseline_score, (int, float)) else "N/A"
                     comparison_data.append({
                         'Student': student.name,
                         'Program': student.program,
                         'Role': role.role_name,
                         'Rule-Based Score': f"{rule_result['readiness_score']:.1f}%",
-                        'ML Score': f"{ml_result['readiness_score_ml']:.1f}%",
                         'Rule-Based Level': rule_result['readiness_level'],
-                        'ML Level': ml_result['readiness_level_ml'],
-                        'Difference': f"{abs(rule_result['readiness_score'] - ml_result['readiness_score_ml']):.1f}%"
+                        'Baseline Score': baseline_score_str,
+                        'Baseline Level': baseline_level,
+                        'Advanced ML Score': f"{ml_result['readiness_score_ml']:.1f}%",
+                        'Advanced ML Level': ml_result['readiness_level_ml'],
+                        'Rule_vs_Advanced_Diff': f"{abs(rule_result['readiness_score'] - ml_result['readiness_score_ml']):.1f}%"
                     })
         
         if comparison_data:
@@ -1201,11 +1270,11 @@ def render_ml_section():
             st.dataframe(df_comparison, use_container_width=True, height=300)
             
             # Insight
-            avg_diff = sum(float(row['Difference'].replace('%', '')) for row in comparison_data) / len(comparison_data)
+            avg_diff = sum(float(row['Rule_vs_Advanced_Diff'].replace('%', '')) for row in comparison_data) / len(comparison_data)
             st.markdown(f"""
             <div class="insight-box">
-                <strong>Insight:</strong> Average difference between rule-based and ML predictions is {avg_diff:.1f}%. 
-                ML models provide more nuanced predictions by learning from patterns in skill portfolios and student characteristics.
+                <strong>Insight:</strong> Average difference between rule-based and advanced ML predictions is {avg_diff:.1f}%. 
+                Baselines provide a simple benchmark; advanced models capture non-linear patterns for richer predictions.
             </div>
             """, unsafe_allow_html=True)
         

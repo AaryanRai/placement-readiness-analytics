@@ -22,6 +22,9 @@ CLASSIFIER_PATH = MODELS_DIR / 'readiness_classifier.pkl'
 GB_CLASSIFIER_PATH = MODELS_DIR / 'readiness_gradient_boosting.pkl'
 REGRESSOR_PATH = MODELS_DIR / 'readiness_regressor.pkl'
 LABEL_ENCODER_PATH = MODELS_DIR / 'readiness_classifier_label_encoder.pkl'
+BASELINE_LOGREG_PATH = MODELS_DIR / "baseline_logistic_regression.pkl"
+BASELINE_LOGREG_LABEL_ENCODER_PATH = MODELS_DIR / "baseline_logistic_regression_label_encoder.pkl"
+BASELINE_RIDGE_PATH = MODELS_DIR / "baseline_ridge_regression.pkl"
 
 # Feature columns (must match training)
 # NOTE: Keep in sync with FEATURE_COLUMNS in train_models.py
@@ -43,6 +46,9 @@ def load_models():
     gb_classifier = None
     regressor = None
     label_encoder = None
+    baseline_logreg = None
+    baseline_logreg_le = None
+    baseline_ridge = None
     
     if CLASSIFIER_PATH.exists():
         classifier = joblib.load(CLASSIFIER_PATH)
@@ -67,8 +73,34 @@ def load_models():
         print(f"✓ Loaded label encoder from {LABEL_ENCODER_PATH}")
     else:
         print(f"⚠ Label encoder not found at {LABEL_ENCODER_PATH}")
+
+    if BASELINE_LOGREG_PATH.exists():
+        baseline_logreg = joblib.load(BASELINE_LOGREG_PATH)
+        print(f"✓ Loaded baseline Logistic Regression from {BASELINE_LOGREG_PATH}")
+    else:
+        print(f"⚠ Baseline Logistic Regression not found at {BASELINE_LOGREG_PATH}")
+
+    if BASELINE_LOGREG_LABEL_ENCODER_PATH.exists():
+        baseline_logreg_le = joblib.load(BASELINE_LOGREG_LABEL_ENCODER_PATH)
+        print(f"✓ Loaded baseline label encoder from {BASELINE_LOGREG_LABEL_ENCODER_PATH}")
+    else:
+        print(f"⚠ Baseline label encoder not found at {BASELINE_LOGREG_LABEL_ENCODER_PATH}")
+
+    if BASELINE_RIDGE_PATH.exists():
+        baseline_ridge = joblib.load(BASELINE_RIDGE_PATH)
+        print(f"✓ Loaded baseline Ridge Regression from {BASELINE_RIDGE_PATH}")
+    else:
+        print(f"⚠ Baseline Ridge Regression not found at {BASELINE_RIDGE_PATH}")
     
-    return classifier, gb_classifier, regressor, label_encoder
+    return (
+        classifier,
+        gb_classifier,
+        regressor,
+        label_encoder,
+        baseline_logreg,
+        baseline_logreg_le,
+        baseline_ridge,
+    )
 
 def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dict:
     """
@@ -92,7 +124,15 @@ def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dic
         }
     """
     # Load models
-    classifier, gb_classifier, regressor, label_encoder = load_models()
+    (
+        classifier,
+        gb_classifier,
+        regressor,
+        label_encoder,
+        baseline_logreg,
+        baseline_logreg_le,
+        baseline_ridge,
+    ) = load_models()
     
     if classifier is None or regressor is None:
         return {
@@ -165,6 +205,37 @@ def predict_readiness_ml(student_id: int, role_id: int, session: Session) -> Dic
             'level': gb_level,
             'probabilities': gb_prob_dict
         }
+
+    # Add baseline predictions if available (preprocessed pipelines stored in artifact dicts)
+    if baseline_logreg is not None and baseline_logreg_le is not None:
+        try:
+            bl_model = baseline_logreg["model"]
+            bl_pre = baseline_logreg["preprocessor"]
+            X_bl = bl_pre.transform(X)
+            bl_level_encoded = bl_model.predict(X_bl)[0]
+            bl_level = baseline_logreg_le.inverse_transform([bl_level_encoded])[0]
+            bl_probs = bl_model.predict_proba(X_bl)[0]
+            bl_prob_dict = {
+                label: float(prob)
+                for label, prob in zip(baseline_logreg_le.classes_, bl_probs)
+            }
+            result["baseline_logistic_regression"] = {
+                "level": bl_level,
+                "probabilities": bl_prob_dict,
+            }
+        except Exception as e:
+            result["baseline_logistic_regression"] = {"error": str(e)}
+
+    if baseline_ridge is not None:
+        try:
+            bl_model = baseline_ridge["model"]
+            bl_pre = baseline_ridge["preprocessor"]
+            X_bl = bl_pre.transform(X)
+            bl_score = float(bl_model.predict(X_bl)[0])
+            bl_score = max(0.0, min(100.0, bl_score))
+            result["baseline_ridge_regression"] = {"score": round(bl_score, 2)}
+        except Exception as e:
+            result["baseline_ridge_regression"] = {"error": str(e)}
     
     return result
 
@@ -183,7 +254,15 @@ def predict_batch_ml(session: Session, student_ids: Optional[list] = None, role_
     from src.database.models import Student, JobRole, MarketReadinessScores
     
     # Load models
-    classifier, gb_classifier, regressor, label_encoder = load_models()
+    (
+        classifier,
+        gb_classifier,
+        regressor,
+        label_encoder,
+        baseline_logreg,
+        baseline_logreg_le,
+        baseline_ridge,
+    ) = load_models()
     
     if classifier is None or regressor is None:
         print("ERROR: Models not trained. Please run train_models.py first.")

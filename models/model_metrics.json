@@ -1,50 +1,113 @@
 {
-  "decision_tree": {
-    "accuracy": 0.856,
-    "precision_macro": 0.6891119221411192,
-    "recall_macro": 0.8152096857818929,
-    "f1_macro": 0.7314321333956677,
-    "precision_micro": 0.856,
-    "recall_micro": 0.856,
-    "f1_micro": 0.856,
-    "precision_weighted": 0.8952985401459855,
-    "recall_weighted": 0.856,
-    "f1_weighted": 0.8688716222533893,
+  "baseline_logistic_regression": {
+    "accuracy": 0.922,
+    "precision_macro": 0.8926123405827568,
+    "recall_macro": 0.9220570328659466,
+    "f1_macro": 0.905107123451668,
+    "precision_micro": 0.922,
+    "recall_micro": 0.922,
+    "f1_micro": 0.922,
+    "precision_weighted": 0.930406184306081,
+    "recall_weighted": 0.922,
+    "f1_weighted": 0.9238693541837052,
     "per_class": {
       "Developing": {
-        "precision": 0.6423357664233577,
-        "recall": 0.7927927927927928,
-        "f1_score": 0.7096774193548387,
-        "support": 111
+        "precision": 0.808641975308642,
+        "recall": 0.9424460431654677,
+        "f1_score": 0.8704318936877077,
+        "support": 139
       },
       "Entry-Level": {
-        "precision": 1.0,
-        "recall": 0.8801089918256131,
-        "f1_score": 0.936231884057971,
-        "support": 367
+        "precision": 0.9868421052631579,
+        "recall": 0.9146341463414634,
+        "f1_score": 0.9493670886075949,
+        "support": 328
       },
       "Ready": {
-        "precision": 0.425,
-        "recall": 0.7727272727272727,
-        "f1_score": 0.5483870967741935,
-        "support": 22
+        "precision": 0.8823529411764706,
+        "recall": 0.9090909090909091,
+        "f1_score": 0.8955223880597015,
+        "support": 33
+      }
+    },
+    "confusion_matrix": [
+      [
+        131,
+        4,
+        4
+      ],
+      [
+        28,
+        300,
+        0
+      ],
+      [
+        3,
+        0,
+        30
+      ]
+    ],
+    "classes": [
+      "Developing",
+      "Entry-Level",
+      "Ready"
+    ]
+  },
+  "baseline_ridge_regression": {
+    "mse": 16.23460724528911,
+    "rmse": 4.029219185560536,
+    "mae": 3.29656872538721,
+    "r2_score": 0.9698345380591189,
+    "mape": 31.031184975199306,
+    "mean_error": 0.26143663092461805,
+    "median_absolute_error": 2.7712038647514037
+  },
+  "decision_tree": {
+    "accuracy": 0.842,
+    "precision_macro": 0.7155077389519858,
+    "recall_macro": 0.8091753561141316,
+    "f1_macro": 0.7468583698615133,
+    "precision_micro": 0.842,
+    "recall_micro": 0.842,
+    "f1_micro": 0.842,
+    "precision_weighted": 0.8720469852558751,
+    "recall_weighted": 0.842,
+    "f1_weighted": 0.8520369543247918,
+    "per_class": {
+      "Developing": {
+        "precision": 0.6929133858267716,
+        "recall": 0.7333333333333333,
+        "f1_score": 0.7125506072874493,
+        "support": 120
+      },
+      "Entry-Level": {
+        "precision": 0.9774193548387097,
+        "recall": 0.8833819241982507,
+        "f1_score": 0.9280245022970903,
+        "support": 343
+      },
+      "Ready": {
+        "precision": 0.47619047619047616,
+        "recall": 0.8108108108108109,
+        "f1_score": 0.6,
+        "support": 37
       }
     },
     "confusion_matrix": [
       [
         88,
-        0,
-        23
+        6,
+        26
       ],
       [
-        44,
-        323,
-        0
+        33,
+        303,
+        7
       ],
       [
-        5,
-        0,
-        17
+        6,
+        1,
+        30
       ]
     ],
     "classes": [
@@ -54,51 +117,51 @@
     ]
   },
   "gradient_boosting": {
-    "accuracy": 0.918,
-    "precision_macro": 0.8666291291291291,
-    "recall_macro": 0.8211636208911414,
-    "f1_macro": 0.8413603608537014,
-    "precision_micro": 0.918,
-    "recall_micro": 0.918,
-    "f1_micro": 0.918,
-    "precision_weighted": 0.9173173423423423,
-    "recall_weighted": 0.918,
-    "f1_weighted": 0.9173100437478324,
+    "accuracy": 1.0,
+    "precision_macro": 1.0,
+    "recall_macro": 1.0,
+    "f1_macro": 1.0,
+    "precision_micro": 1.0,
+    "recall_micro": 1.0,
+    "f1_micro": 1.0,
+    "precision_weighted": 1.0,
+    "recall_weighted": 1.0,
+    "f1_weighted": 1.0,
     "per_class": {
       "Developing": {
-        "precision": 0.8125,
-        "recall": 0.8198198198198198,
-        "f1_score": 0.8161434977578476,
-        "support": 111
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 120
       },
       "Entry-Level": {
-        "precision": 0.9540540540540541,
-        "recall": 0.9618528610354223,
-        "f1_score": 0.9579375848032564,
-        "support": 367
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 343
       },
       "Ready": {
-        "precision": 0.8333333333333334,
-        "recall": 0.6818181818181818,
-        "f1_score": 0.75,
-        "support": 22
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "support": 37
       }
     },
     "confusion_matrix": [
       [
-        91,
-        17,
-        3
-      ],
-      [
-        14,
-        353,
+        120,
+        0,
         0
       ],
       [
-        7,
         0,
-        15
+        343,
+        0
+      ],
+      [
+        0,
+        0,
+        37
       ]
     ],
     "classes": [
@@ -108,19 +171,25 @@
     ]
   },
   "random_forest": {
-    "mse": 56.49389958519428,
-    "rmse": 7.516242384675622,
-    "mae": 5.453678300161686,
-    "r2_score": 0.9155243771988942,
-    "mape": 20.676640735412946,
-    "mean_error": 0.510345756476493,
-    "median_absolute_error": 4.245571884922851
+    "mse": 11.973917033033906,
+    "rmse": 3.460334815163687,
+    "mae": 2.6018156745073573,
+    "r2_score": 0.9787237111119734,
+    "mape": 25.393296423200134,
+    "mean_error": 0.2896795829356548,
+    "median_absolute_error": 1.8810295772280554
   },
   "metadata": {
-    "training_date": "2026-02-10T19:27:29.705733",
+    "training_date": "2026-03-10T12:20:53.876784",
     "total_samples": 2500,
     "training_samples": 2000.0,
     "test_samples": 500.0,
-    "feature_count": 29
+    "feature_count": 29,
+    "split_strategy": "grouped_by_student_id",
+    "artifacts": {
+      "data_quality_report": "/Users/aaryanrai/Downloads/Career Readiness Prediction/models/data_quality_report.json",
+      "baseline_logistic_regression": "/Users/aaryanrai/Downloads/Career Readiness Prediction/models/baseline_logistic_regression.pkl",
+      "baseline_ridge_regression": "/Users/aaryanrai/Downloads/Career Readiness Prediction/models/baseline_ridge_regression.pkl"
+    }
   }
 }

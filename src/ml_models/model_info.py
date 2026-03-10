@@ -80,6 +80,25 @@ def get_model_performance_metrics():
             
             # Format for dashboard display
             return {
+                'baseline_logistic_regression': {
+                    'accuracy': metrics.get('baseline_logistic_regression', {}).get('accuracy', 0.0),
+                    'precision_macro': metrics.get('baseline_logistic_regression', {}).get('precision_macro', 0.0),
+                    'recall_macro': metrics.get('baseline_logistic_regression', {}).get('recall_macro', 0.0),
+                    'f1_macro': metrics.get('baseline_logistic_regression', {}).get('f1_macro', 0.0),
+                    'per_class': metrics.get('baseline_logistic_regression', {}).get('per_class', {}),
+                    'confusion_matrix': metrics.get('baseline_logistic_regression', {}).get('confusion_matrix', []),
+                    'classes': metrics.get('baseline_logistic_regression', {}).get('classes', []),
+                    'model_type': 'Baseline Logistic Regression',
+                    'purpose': 'Baseline readiness level classification (linear model)'
+                },
+                'baseline_ridge_regression': {
+                    'r2_score': metrics.get('baseline_ridge_regression', {}).get('r2_score', 0.0),
+                    'rmse': metrics.get('baseline_ridge_regression', {}).get('rmse', 0.0),
+                    'mae': metrics.get('baseline_ridge_regression', {}).get('mae', 0.0),
+                    'mape': metrics.get('baseline_ridge_regression', {}).get('mape', 0.0),
+                    'model_type': 'Baseline Ridge Regression',
+                    'purpose': 'Baseline readiness score regression (linear model)'
+                },
                 'decision_tree': {
                     'accuracy': metrics.get('decision_tree', {}).get('accuracy', 0.0),
                     'precision_macro': metrics.get('decision_tree', {}).get('precision_macro', 0.0),

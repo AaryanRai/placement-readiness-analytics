@@ -74,7 +74,7 @@ def calculate_readiness_score(student_id: int, role_id: int, session: Session, u
                     'required_skills_count': required_count,
                     'skill_gap_count': required_count - matched_count,
                     'missing_skills': [],
-                    'model_used': 'ML (Random Forest + Decision Tree)'
+                    'model_used': ml_result.get('model_used') or 'ML'
                 }
         except Exception as e:
             # Fall through to rule-based if ML fails
