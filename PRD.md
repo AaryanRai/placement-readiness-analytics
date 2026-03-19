@@ -100,7 +100,7 @@ def calculate_readiness_score(student_id, role_id):
     """
 ```
 
-### Dashboard (Streamlit - 3 Core Charts)
+### Dashboard (FastAPI SPA - 3 Core Charts)
 1. **Pie Chart:** Cohort Readiness Distribution
    - Ready (80-100%): X students
    - Developing (50-79%): Y students
@@ -490,9 +490,9 @@ def calculate_all_scores(session: Session) -> None:
 
 ---
 
-## STREAMLIT DASHBOARD SPECIFICATIONS
+## Legacy Streamlit Dashboard Specifications (Archived)
 
-### File: `src/dashboard/app.py`
+### File: `src/dashboard/app.py` (legacy)
 ```python
 """
 University Placement Analytics Dashboard
@@ -677,7 +677,7 @@ placement-analytics/
 │   │   └── predict.py
 │   └── dashboard/
 │       ├── __init__.py
-│       └── app.py           # Streamlit dashboard
+│       └── app.py           # Legacy Streamlit dashboard (archived)
 ├── notebooks/
 │   └── exploration.ipynb
 ├── models/
@@ -709,9 +709,9 @@ Faker==21.0.0
 scikit-learn==1.3.2
 joblib==1.3.2
 
-# Dashboard
-streamlit==1.29.0
-plotly==5.18.0
+# Web API / Server
+fastapi
+uvicorn[standard]
 
 # Automation
 APScheduler==3.10.4

@@ -20,15 +20,12 @@ This system uses **Machine Learning models at its core** to predict student plac
 **How It Works:**
 1. The model builds a tree structure by splitting data based on feature values
 2. Each split maximizes information gain (reduces uncertainty)
-3. The tree learns decision rules like: "If match_ratio > 0.8, then Ready"
+3. The tree learns decision rules from portfolio + role requirement signals (e.g., proficiency statistics and required/matched/gap counts)
 4. Final predictions are made by following the tree path for each student
 
-**Performance:**
-- **Accuracy:** ~87% (varies with training data)
-- **Precision/Recall/F1:** Calculated per class and macro-averaged
-- **Training Samples:** 80% of dataset
-- **Test Samples:** 20% of dataset
-- **Top Feature:** match_ratio (typically highest importance)
+- **Performance:**
+- **Metrics:** Loaded from `models/model_metrics.json` and displayed on the ML dashboard (classification metrics + confusion matrix)
+- **Top Features:** Feature importance is computed from the trained artifact and shown in the ML dashboard
 
 ### 2. Gradient Boosting Classifier
 
@@ -48,12 +45,8 @@ This system uses **Machine Learning models at its core** to predict student plac
 4. Final prediction is the weighted sum of all tree predictions
 5. This boosting approach reduces both bias and variance
 
-**Performance:**
-- **Accuracy:** Typically 88-92% (often higher than Decision Tree)
-- **Precision/Recall/F1:** Calculated per class and macro-averaged
-- **Training Samples:** 80% of dataset
-- **Test Samples:** 20% of dataset
-- **Hyperparameters:** 100 estimators, max_depth=5, learning_rate=0.1
+- **Performance:**
+- **Metrics:** Loaded from `models/model_metrics.json` and displayed on the ML dashboard (classification metrics + confusion matrix)
 
 **Why We Use Both Decision Tree and Gradient Boosting:**
 - **Decision Tree:** Provides interpretability and baseline performance
@@ -79,14 +72,9 @@ This system uses **Machine Learning models at its core** to predict student plac
 4. Final prediction is the average of all tree predictions
 5. This ensemble approach reduces variance and improves accuracy
 
-**Performance:**
-- **R² Score:** ~96% (explains variance in readiness scores)
-- **RMSE:** ~5.0 (average prediction error in percentage points)
-- **MAE:** ~3.8 (mean absolute error)
-- **MAPE:** Mean Absolute Percentage Error for relative error assessment
-- **Training Samples:** 80% of dataset
-- **Test Samples:** 20% of dataset
-- **Top Feature:** match_ratio (typically highest importance)
+- **Performance:**
+- **Metrics:** Loaded from `models/model_metrics.json` and displayed on the ML dashboard (regression metrics + score distribution)
+- **Top Features:** Feature importance is computed from the trained artifact and shown in the ML dashboard
 
 ## Model Comparison
 
@@ -120,9 +108,9 @@ This system uses **Machine Learning models at its core** to predict student plac
 
 ## Feature Engineering
 
-### 30 Features Extracted
+### 29 Features Extracted
 
-The models use 30 carefully engineered features:
+The models use 29 carefully engineered features (see `FEATURE_COLUMNS` in `src/ml_models/train_models.py`):
 
 #### Student Demographics (5 features)
 - `year_of_study`: Academic year (1-4)
@@ -153,11 +141,10 @@ The models use 30 carefully engineered features:
 - `source_Project`: Skills from projects
 - `source_Workshop`: Skills from workshops
 
-#### Role-Specific Features (4 features)
+#### Role-Specific Features (3 features)
 - `required_skills_count`: Number of skills required for role
 - `matched_skills_count`: Number of required skills student has
 - `skill_gap_count`: Number of missing skills
-- `match_ratio`: matched_skills / required_skills (most important feature!)
 
 #### Role Encoding (5 features)
 - `role_Data Analyst`: One-hot encoded
@@ -175,7 +162,7 @@ The models use 30 carefully engineered features:
 ### ML Approach (Primary)
 - **Pros:** 
   - Learns complex patterns automatically
-  - Better accuracy (95.9% R² vs rule-based)
+  - Better predictive performance vs rule-based baseline (validated in `models/model_metrics.json`)
   - Adapts to data patterns
   - Captures feature interactions
   - Automatic feature weighting
@@ -193,25 +180,20 @@ The models use 30 carefully engineered features:
 
 1. **Data Collection:** Extract features from 2,500 student-role combinations
 2. **Data Split:** 80% training, 20% testing (stratified for classifier)
-3. **Feature Engineering:** Extract 30 features per student-role pair
+3. **Feature Engineering:** Extract 29 features per student-role pair
 4. **Model Training:**
-   - Decision Tree: max_depth=10, min_samples_split=20
-   - Random Forest: n_estimators=100, max_depth=15
+   - Decision Tree Classifier
+   - Gradient Boosting Classifier
+   - Random Forest Regressor
+   - Plus baseline Logistic Regression and Ridge Regression for comparison
 5. **Evaluation:** Test on held-out data
 6. **Model Saving:** Save trained models for production use
 
 ## Feature Importance Insights
 
-### Most Important Feature: match_ratio
-- **Classifier:** 89.7% importance
-- **Regressor:** 93.6% importance
-- **Why:** The ratio of matched skills to required skills is the strongest predictor of readiness
-
-### Other Important Features
-- `avg_proficiency`: Overall skill quality matters
-- `matched_skills_count`: Absolute number of matched skills
-- `skills_Soft Skills`: Soft skills are important indicators
-- `source_Course`: Course-based skills are valuable
+### Feature Importance (How to Interpret)
+- Feature importance values are computed from the trained sklearn models and surfaced in the dashboard’s ML page.
+- Interpret importance in context of the feature groups: program/role one-hot encodings, portfolio metrics (e.g., `avg_proficiency`), and role requirement alignment (`required_skills_count`, `matched_skills_count`, `skill_gap_count`).
 
 ## Usage in System
 
@@ -224,7 +206,7 @@ The models use 30 carefully engineered features:
 - ML predictions shown in "ML Predictions" section
 - Feature importance visualizations
 - Model performance metrics
-- Comparison with rule-based (for validation)
+- Rule-based vs ML signal visualizations (e.g., correlation scatter)
 
 ## Model Maintenance
 
@@ -243,8 +225,7 @@ Models should be retrained when:
 ## Conclusion
 
 The ML models are the **core** of this system, providing:
-- **87% accuracy** in classifying readiness levels
-- **95.9% R² score** in predicting exact readiness scores
+- **Measured predictive performance** (classification + regression metrics) loaded from `models/model_metrics.json`
 - **Automatic pattern learning** from student data
 - **Better predictions** than rule-based algorithms
 

@@ -1,6 +1,6 @@
 # University Placement Readiness Analytics System
 
-A comprehensive data engineering and machine learning project for university administrators to track and analyze student job market readiness. This system processes student records through PostgreSQL databases, employs machine learning models for predictive analytics, and delivers real-time insights through an enterprise-grade Streamlit dashboard.
+A comprehensive data engineering and machine learning project for university administrators to track and analyze student job market readiness. This system processes student records through PostgreSQL databases, employs machine learning models for predictive analytics, and delivers real-time insights through a FastAPI-backed SPA dashboard.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ The University Placement Readiness Analytics System is designed to help universi
 - **Student Data Management**: Tracks 500+ students across multiple academic programs (BBA, Btech, B.Com)
 - **Skill Portfolio Analysis**: Monitors 47+ skills across Technical, Business, Design, and Soft Skills categories
 - **Market Readiness Scoring**: Calculates readiness scores (0-100%) for each student across multiple career roles
-- **Machine Learning Predictions**: Uses trained ML models (Decision Tree Classifier and Random Forest Regressor) for accurate predictions
+- **Machine Learning Predictions**: Uses trained ML models (Decision Tree Classifier, Gradient Boosting Classifier, Random Forest Regressor) for accurate predictions
 - **Real-time Analytics Dashboard**: Interactive visualizations showing cohort health, program comparisons, career readiness, and skill gaps
 - **Dynamic Data Generation**: Realistic synthetic data generation with proper statistical distributions
 
@@ -64,7 +64,7 @@ The system follows a modular architecture with clear separation of concerns:
                    ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Feature Engineering Layer                              │
-│  - 30 features extracted from raw data                  │
+│  - 29 features extracted from raw data                  │
 │  - Student demographics                                 │
 │  - Skill portfolio metrics                              │
 │  - Role-specific features                                │
@@ -74,6 +74,7 @@ The system follows a modular architecture with clear separation of concerns:
 ┌─────────────────────────────────────────────────────────┐
 │  Machine Learning Layer                                 │
 │  - Decision Tree Classifier (readiness levels)         │
+│  - Gradient Boosting Classifier (readiness levels)    │
 │  - Random Forest Regressor (readiness scores)           │
 │  - Model training and evaluation                        │
 │  - Prediction pipeline                                  │
@@ -82,10 +83,9 @@ The system follows a modular architecture with clear separation of concerns:
                    ▼
 ┌─────────────────────────────────────────────────────────┐
 │  Analytics Dashboard Layer                              │
-│  - Streamlit web application                            │
-│  - Interactive visualizations                           │
-│  - Real-time data queries                               │
-│  - Enterprise-grade UI/UX                               │
+│  - Frontend SPA served statically (Chart.js charts)    │
+│  - FastAPI API gateway serving /api/* endpoints         │
+│  - Real-time data queries + enterprise-grade UI/UX     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -101,12 +101,14 @@ The system follows a modular architecture with clear separation of concerns:
 ### Machine Learning Capabilities
 
 - **Predictive Modeling**: Three trained ML models for readiness prediction
-- **Feature Engineering**: 30 carefully engineered features from student data
+- **Feature Engineering**: 29 carefully engineered features from student data
 - **Comprehensive Evaluation**: Precision, Recall, F1, RMSE, MAE, MAPE metrics
-- **Model Performance**: ~87-92% classification accuracy, ~96% R² score for regression
+- **Model Performance**: Metrics loaded from `models/model_metrics.json` and displayed in the ML dashboard
 - **Real-time Predictions**: Fast inference for individual and batch predictions
 - **Training Data Visualizations**: Interactive charts showing data distributions and correlations
 - **New Prediction Form**: Input form for predicting readiness of new students
+- **Prediction Explainability**: Matched vs missing required skills for the selected role (returned by `/api/predict`)
+- **Data Drift Monitoring**: PSI-based drift report comparing current readiness score distribution vs training baseline (from `/api/ml/drift`)
 
 ### Analytics and Visualization
 
@@ -157,11 +159,8 @@ The system employs three machine learning models as the core prediction mechanis
 - Fast training and inference
 
 **Top Features** (by importance):
-1. Match Ratio: 89.7%
-2. Average Proficiency: 3.3%
-3. Soft Skills Count: 1.0%
-4. Course-based Skills: 0.9%
-5. Program (BBA): 0.6%
+- Feature importance is computed dynamically from the trained model and displayed in the dashboard.
+- Commonly high-importance groups include portfolio quality features (e.g., `avg_proficiency`) and role-requirement coverage features (`required_skills_count`, `matched_skills_count`, `skill_gap_count`).
 
 ### Random Forest Regressor
 
@@ -192,11 +191,8 @@ The system employs three machine learning models as the core prediction mechanis
 - Provides feature importance insights
 
 **Top Features** (by importance):
-1. Match Ratio: 93.6%
-2. Matched Skills Count: 3.1%
-3. Skill Gap Count: 0.7%
-4. Average Proficiency: 0.5%
-5. Beginner Proficiency Count: 0.3%
+- Feature importance is computed dynamically from the trained regressor and displayed in the dashboard.
+- High-importance features typically come from portfolio metrics and role-alignment counts (total/matched/gap).
 
 ### Gradient Boosting Classifier
 
@@ -227,13 +223,12 @@ The system employs three machine learning models as the core prediction mechanis
 - Provides feature importance insights
 
 **Top Features** (by importance):
-- Match Ratio: Typically highest importance
-- Average Proficiency: Significant contributor
-- Skill counts and proficiency distributions: Important factors
+- Feature importance is computed dynamically from the trained model and displayed in the dashboard.
+- Important signals typically include portfolio metrics and role-requirement coverage.
 
 ### Feature Engineering
 
-The models use 30 engineered features:
+The models use 29 engineered features:
 
 **Student Demographics (5 features)**:
 - Year of study (1-4)
@@ -264,11 +259,10 @@ The models use 30 engineered features:
 - Project-acquired skills count
 - Workshop-acquired skills count
 
-**Role-Specific Features (4 features)**:
+**Role-Specific Features (3 features)**:
 - Required skills count for role
 - Matched skills count
 - Skill gap count
-- Match ratio (matched/required)
 
 **Role Encoding (5 features)**:
 - One-hot encoding for 5 job roles (Data Analyst, Full-Stack Developer, Digital Marketer, Business Analyst, UX/UI Designer)
@@ -553,10 +547,10 @@ This will:
 ### Step 10: Launch Dashboard
 
 ```bash
-streamlit run src/dashboard/app.py
+uvicorn src.api.server:app --host 0.0.0.0 --port 8000
 ```
 
-The dashboard will open in your default web browser at `http://localhost:8501`.
+The dashboard will open in your default web browser at `http://localhost:8000`.
 
 ## Usage
 
@@ -602,7 +596,7 @@ python src/core/scoring_ml.py
 
 **5. Launch Dashboard**:
 ```bash
-streamlit run src/dashboard/app.py
+uvicorn src.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ### Dashboard Navigation
@@ -662,6 +656,9 @@ placement-readiness-analytics/
 ├── data/                        # Data files
 │   └── skill_taxonomy.json      # Skills taxonomy (47 skills categorized)
 │
+├── frontend/                   # SPA frontend (single-page dashboard)
+│   └── index.html             # Static UI + client-side rendering
+│
 ├── src/                         # Source code
 │   ├── database/                # Database layer
 │   │   ├── __init__.py
@@ -675,6 +672,13 @@ placement-readiness-analytics/
 │   │   ├── generate_skills.py   # Skill acquisition simulation
 │   │   └── populate_db.py       # Main data population script
 │   │
+│   ├── api/                     # FastAPI API layer
+│   │   ├── __init__.py
+│   │   ├── server.py            # FastAPI app + static frontend mounting
+│   │   ├── queries.py           # API-safe SQLAlchemy query functions
+│   │   ├── ml_service.py        # ML artifact formatting endpoints
+│   │   └── predict_service.py  # POST /api/predict logic + explainability
+│   │
 │   ├── core/                    # Core algorithms
 │   │   ├── __init__.py
 │   │   ├── scoring.py           # Readiness scoring (ML-based with fallback)
@@ -687,9 +691,8 @@ placement-readiness-analytics/
 │   │   ├── predict.py            # Prediction functions
 │   │   └── model_info.py        # Model information utilities
 │   │
-│   └── dashboard/               # Streamlit dashboard
-│       ├── __init__.py
-│       └── app.py               # Main dashboard application
+│   └── dashboard/               # Legacy Streamlit dashboard (archived)
+│       └── app.py               # Main dashboard application (legacy)
 │
 ├── models/                      # Trained ML models
 │   ├── .gitkeep                 # Preserves directory structure
@@ -729,6 +732,8 @@ placement-readiness-analytics/
 - **PostgreSQL 12+**: Relational database management system
 - **SQLAlchemy 2.0+**: Python SQL toolkit and ORM
 - **psycopg2-binary**: PostgreSQL adapter for Python
+- **FastAPI**: REST API serving `/api/*` endpoints and static frontend
+- **uvicorn**: ASGI server for FastAPI
 
 ### Data Processing
 
@@ -748,8 +753,8 @@ placement-readiness-analytics/
 
 ### Frontend
 
-- **Streamlit 1.29+**: Web application framework
-- **Plotly 5.18+**: Interactive visualization library
+- **SPA frontend**: `frontend/index.html` (HTML/CSS/JS)
+- **Chart.js 4.x**: Client-side charts
 
 ### Utilities
 
@@ -882,12 +887,12 @@ If you encounter import errors:
    ```
 3. Check Python path in scripts (they should add project root to sys.path)
 
-**Port Already in Use (Streamlit)**
+**Port Already in Use (FastAPI)**
 
-If port 8501 is already in use:
+If port 8000 is already in use:
 
 ```bash
-streamlit run src/dashboard/app.py --server.port 8502
+uvicorn src.api.server:app --host 0.0.0.0 --port 8001
 ```
 
 **Database Lock Errors**
@@ -938,9 +943,9 @@ Aaryan Rai
 
 ## Acknowledgments
 
-- Built using open-source technologies: PostgreSQL, Python, Streamlit, scikit-learn
+- Built using open-source technologies: PostgreSQL, Python, FastAPI, scikit-learn
 - Synthetic data generation powered by Faker library
-- Visualizations created with Plotly
+- Visualizations created with Chart.js
 
 ---
 

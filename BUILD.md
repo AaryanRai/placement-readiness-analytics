@@ -14,7 +14,7 @@ This build includes a complete, working MVP of the University Placement Readines
 - ✅ **Database Layer**: PostgreSQL with 6 tables, indexes, and constraints
 - ✅ **Data Generation**: Synthetic data for 500 students with realistic skill profiles
 - ✅ **Scoring Engine**: Market readiness algorithm calculating 2,500 scores
-- ✅ **Dashboard**: Streamlit interface with 3 core visualizations
+- ✅ **Dashboard**: FastAPI + SPA (static frontend) dashboard with 3 core visualizations
 - ✅ **Error Handling**: Comprehensive error handling and validation
 - ✅ **Documentation**: Complete setup and usage instructions
 
@@ -53,8 +53,8 @@ All required dependencies have been installed:
 - ✅ `pandas` (2.2.3) - Data processing
 - ✅ `numpy` (2.2.0) - Numerical operations
 - ✅ `Faker` (40.4.0) - Synthetic data generation
-- ✅ `streamlit` (1.43.2) - Dashboard framework
-- ✅ `plotly` (6.5.0) - Interactive charts
+- ✅ `fastapi` - REST API + static file serving for the dashboard
+- ✅ `uvicorn[standard]` - ASGI server for FastAPI
 - ✅ `python-dotenv` (1.0.1) - Environment variables
 - ✅ All other dependencies from requirements.txt
 

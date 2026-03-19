@@ -2,35 +2,36 @@
 
 ## Overview
 
-The system has transitioned from rule-based scoring to ML-based prediction using two trained models:
+The system transitions from rule-based scoring to ML-based prediction using trained models:
 
 1. **Decision Tree Classifier** - Predicts readiness level (Ready/Developing/Entry-Level)
-2. **Random Forest Regressor** - Predicts exact readiness score (0-100%)
+2. **Gradient Boosting Classifier** - Predicts readiness level (Ready/Developing/Entry-Level)
+3. **Random Forest Regressor** - Predicts exact readiness score (0-100%)
+
+Additionally, baseline models (**Logistic Regression** for readiness level and **Ridge Regression** for readiness score) are trained and saved to support technical validation/defense. The dashboard reads aggregated performance metrics from `models/model_metrics.json` and displays model artifacts (feature importance, confusion matrix, score distributions) from the trained model files.
 
 ## Model Performance
 
 ### Decision Tree Classifier
-- **Accuracy:** 87.0%
+- **Metrics:** loaded from `models/model_metrics.json` and displayed on the ML dashboard
 - **Purpose:** Classify students into readiness levels
 - **Classes:** Ready, Developing, Entry-Level
-- **Training Samples:** 2,000
-- **Test Samples:** 500
-- **Key Features:** match_ratio (89.7% importance), avg_proficiency, skills_Soft Skills
+- **Key Features:** The exact top features are computed from the trained model and displayed dynamically in the dashboard (feature importance).
 
 ### Random Forest Regressor
-- **R² Score:** 95.9%
-- **RMSE:** 5.07
-- **MAE:** 3.84
+- **Metrics:** loaded from `models/model_metrics.json` and displayed on the ML dashboard
 - **Purpose:** Predict exact readiness score percentage
-- **Training Samples:** 2,000
-- **Test Samples:** 500
-- **Key Features:** match_ratio (93.6% importance), matched_skills_count, skill_gap_count
+- **Key Features:** The exact top features are computed from the trained model and displayed dynamically in the dashboard (feature importance).
+
+### Gradient Boosting Classifier
+- **Purpose:** Classify students into readiness levels (Ready/Developing/Entry-Level)
+- **Key Features:** The exact top features are computed from the trained model and displayed dynamically in the dashboard (feature importance).
 
 ## Feature Engineering
 
-### 28 Features Extracted
+### 29 Features Extracted
 
-#### Student Demographics (3 features)
+#### Student Demographics & Program Encoding (5 features)
 - `year_of_study`: Academic year (1-4)
 - `enrollment_year`: Year of enrollment
 - `program_BBA`, `program_Btech`, `program_B.Com`: One-hot encoded program
@@ -59,11 +60,10 @@ The system has transitioned from rule-based scoring to ML-based prediction using
 - `source_Project`: Skills from projects
 - `source_Workshop`: Skills from workshops
 
-#### Role-Specific Features (4 features)
+#### Role-Specific Features (3 features)
 - `required_skills_count`: Number of skills required for role
 - `matched_skills_count`: Number of required skills student has
 - `skill_gap_count`: Number of missing skills
-- `match_ratio`: matched_skills / required_skills
 
 #### Role Encoding (5 features)
 - `role_Data Analyst`: One-hot encoded
@@ -87,14 +87,21 @@ python src/ml_models/train_models.py
 This script:
 - Extracts features from database
 - Trains Decision Tree Classifier
+- Trains Gradient Boosting Classifier
 - Trains Random Forest Regressor
+- Trains baseline Logistic Regression + Ridge Regression for comparison
 - Evaluates model performance
 - Saves models to `models/` directory
 
 ### Model Files
 - `models/readiness_classifier.pkl` - Decision Tree Classifier
+- `models/readiness_gradient_boosting.pkl` - Gradient Boosting Classifier
 - `models/readiness_regressor.pkl` - Random Forest Regressor
-- `models/readiness_classifier_label_encoder.pkl` - Label encoder for classes
+- `models/readiness_classifier_label_encoder.pkl` - Label encoder for readiness classes
+- `models/baseline_logistic_regression.pkl` - Baseline Logistic Regression (readiness level)
+- `models/baseline_logistic_regression_label_encoder.pkl` - Label encoder for baseline logistic regression
+- `models/baseline_ridge_regression.pkl` - Baseline Ridge Regression (readiness score)
+- `models/model_metrics.json` - Aggregated evaluation metrics for dashboard display
 
 ## Usage
 
@@ -138,12 +145,13 @@ python src/core/scoring_ml.py
 
 ## Integration with Dashboard
 
-The dashboard now includes an "ML Predictions" section showing:
+The dashboard now includes an ML section showing:
 - Model performance metrics
-- Rule-based vs ML comparison table
+- Data drift monitoring (PSI-based)
 - Feature importance visualizations
-- ML prediction distributions
-- Statistical summaries
+- Confusion matrix for the classification model (Decision Tree artifact)
+- Correlation scatter (Rule-based vs ML signal)
+- ML predicted score distribution histogram
 
 ## Key Advantages of ML Models
 
@@ -156,17 +164,8 @@ The dashboard now includes an "ML Predictions" section showing:
 ## Model Interpretability
 
 ### Most Important Features
-1. **match_ratio** (89.7% - Classifier, 93.6% - Regressor)
-   - Ratio of matched skills to required skills
-   - Most predictive feature
-
-2. **avg_proficiency** (3.3% - Classifier, 0.5% - Regressor)
-   - Average skill proficiency level
-   - Indicates overall skill quality
-
-3. **matched_skills_count** (3.1% - Regressor)
-   - Absolute number of matched skills
-   - Important for score prediction
+- Feature importance is computed from the trained sklearn model artifacts and displayed in the dashboard’s ML page.
+- The feature space is defined in `src/ml_models/train_models.py` as `FEATURE_COLUMNS`.
 
 ## Comparison: Rule-Based vs ML
 

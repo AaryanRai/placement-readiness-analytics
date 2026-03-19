@@ -62,7 +62,7 @@ After pushing, refresh your GitHub repository page. You should see all your proj
 ## Next Steps After Pushing
 
 1. **Add Repository Description**: Update the GitHub repo description
-2. **Add Topics/Tags**: Add tags like `machine-learning`, `streamlit`, `postgresql`, `education`, `analytics`
+2. **Add Topics/Tags**: Add tags like `machine-learning`, `fastapi`, `postgresql`, `education`, `analytics`
 3. **Create Releases**: Tag important versions (e.g., `v1.0.0`)
 4. **Add License**: Consider adding a LICENSE file
 5. **Update README**: Ensure README has clear setup instructions
@@ -78,12 +78,14 @@ placement-readiness-analytics/
 ├── run.sh                    # Run script
 ├── config/                   # Configuration
 ├── data/                     # Data files
+├── frontend/                 # SPA frontend (static HTML/CSS/JS)
 ├── src/                      # Source code
+│   ├── api/                 # FastAPI API gateway
 │   ├── database/            # Database layer
 │   ├── data_generation/     # Data generation
 │   ├── core/                # Core algorithms
 │   ├── ml_models/           # ML models
-│   └── dashboard/           # Streamlit dashboard
+│   └── dashboard/           # Legacy Streamlit dashboard (archived)
 ├── models/                   # ML models (gitkeep only)
 └── tests/                    # Test files
 ```
