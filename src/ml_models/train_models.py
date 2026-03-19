@@ -35,6 +35,7 @@ from src.preprocessing.preprocessor import (
     validate_training_frame,
 )
 from src.preprocessing.data_quality import generate_quality_report
+from src.ml_models.drift import build_drift_baseline_from_training_frame, save_drift_baseline
 
 # Feature columns (excluding target variables)
 # NOTE: We intentionally exclude 'match_ratio' to prevent it from becoming an
@@ -502,6 +503,15 @@ def main():
     with open(metrics_path, 'w') as f:
         json.dump(metrics, f, indent=2)
     print(f"✓ Metrics saved to: {metrics_path}")
+
+    # Save a baseline distribution snapshot for later data drift monitoring.
+    # This supports a lightweight "is the model still behaving similarly?" check.
+    try:
+        baseline = build_drift_baseline_from_training_frame(df)
+        baseline_path = save_drift_baseline(models_dir=models_dir, baseline=baseline)
+        print(f"✓ Drift baseline saved to: {baseline_path}")
+    except Exception as e:
+        print(f"⚠ Could not build drift baseline: {e}")
     
     print("\n[4/4] Summary:")
     print(f"  Baseline Logistic Accuracy: {metrics['baseline_logistic_regression']['accuracy']:.4f}")

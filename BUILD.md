@@ -94,8 +94,14 @@ python src/data_generation/populate_db.py
 # 6. Calculate scores
 python src/core/scoring.py
 
-# 7. Launch dashboard
-streamlit run src/dashboard/app.py
+# 7. Train ML models
+python src/ml_models/train_models.py
+
+# 8. Update scores with ML predictions
+python src/core/scoring_ml.py
+
+# 9. Launch dashboard
+uvicorn src.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ---
@@ -164,7 +170,7 @@ python3 -c "from src.database.connection import get_db_session; from src.core.sc
 2. **Create Database**: Run `createdb placement_analytics`
 3. **Run Setup**: Execute `./setup.sh` or follow manual steps
 4. **Verify Data**: Check database has all expected records
-5. **Launch Dashboard**: Run `streamlit run src/dashboard/app.py`
+5. **Launch Dashboard**: Run `uvicorn src.api.server:app --host 0.0.0.0 --port 8000`
 6. **Review Results**: Verify all visualizations display correctly
 
 ---

@@ -19,7 +19,7 @@ python3 --version || { echo "Python 3 is required but not installed. Aborting.";
 echo ""
 echo "Installing Python dependencies..."
 # Try to install without version pin for psycopg2-binary to get latest compatible version
-pip3 install psycopg2-binary SQLAlchemy==2.0.23 pandas==2.1.4 numpy==1.26.2 Faker==21.0.0 scikit-learn==1.3.2 joblib==1.3.2 streamlit==1.29.0 plotly==5.18.0 APScheduler==3.10.4 python-dotenv==1.0.0 pytest==7.4.3 jupyter==1.0.0 || {
+pip3 install psycopg2-binary SQLAlchemy==2.0.23 pandas==2.1.4 numpy==1.26.2 Faker==21.0.0 scikit-learn==1.3.2 joblib==1.3.2 plotly==5.18.0 APScheduler==3.10.4 python-dotenv==1.0.0 pytest==7.4.3 jupyter==1.0.0 fastapi uvicorn[standard] || {
     echo "⚠️  Some packages failed to install. Trying with requirements.txt..."
     pip3 install -r requirements.txt || echo "⚠️  Installation had issues. You may need to install packages manually."
 }
@@ -104,6 +104,6 @@ echo "2. Create database: createdb placement_analytics"
 echo "3. Initialize database: python src/database/init_db.py"
 echo "4. Populate data: python src/data_generation/populate_db.py"
 echo "5. Calculate scores: python src/core/scoring.py"
-echo "6. Run dashboard: streamlit run src/dashboard/app.py"
+echo "6. Run dashboard: uvicorn src.api.server:app --host 0.0.0.0 --port 8000"
 echo ""
 

@@ -1,0 +1,2878 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TOUCH GRASS — Placement Readiness Analytics</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+    <style>
+      :root {
+        --canvas: #f5f5f7;
+        --surface: #ffffff;
+        --surface-2: #f9f9fb;
+        --surface-3: #f2f2f5;
+        --sidebar-bg: #1a1a2e;
+        --sidebar-text: rgba(255, 255, 255, 0.65);
+        --sidebar-active-bg: rgba(255, 255, 255, 0.08);
+        --sidebar-active: #ffffff;
+        --sidebar-muted: rgba(255, 255, 255, 0.3);
+        --border: #e4e4ec;
+        --border-light: #efeff4;
+        --rule: #f0f0f5;
+
+        --txt-1: #0f0f1a;
+        --txt-2: #52526e;
+        --txt-3: #9898b0;
+        --txt-4: #c0c0d0;
+
+        --green: #16a34a;
+        --green-bg: #f0fdf4;
+        --green-brd: #bbf7d0;
+
+        --amber: #d97706;
+        --amber-bg: #fffbeb;
+        --amber-brd: #fde68a;
+
+        --red: #dc2626;
+        --red-bg: #fef2f2;
+        --red-brd: #fecaca;
+
+        --blue: #2563eb;
+        --blue-bg: #eff6ff;
+        --blue-brd: #bfdbfe;
+
+        --violet: #7c3aed;
+        --violet-bg: #f5f3ff;
+        --violet-brd: #ddd6fe;
+
+        --cyan: #0891b2;
+        --cyan-bg: #ecfeff;
+        --cyan-brd: #a5f3fc;
+
+        --font: "Montserrat", sans-serif;
+        --mono: "JetBrains Mono", monospace;
+        --r: 6px;
+        --r-sm: 4px;
+        --r-lg: 10px;
+        --sw: 232px;
+        --th: 52px;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+      }
+
+      [data-theme="dark"] {
+        --canvas: #0d0d14;
+        --surface: #13131f;
+        --surface-2: #17172a;
+        --surface-3: #1c1c30;
+        --sidebar-bg: #0a0a15;
+        --sidebar-text: rgba(255, 255, 255, 0.55);
+        --sidebar-active-bg: rgba(255, 255, 255, 0.06);
+        --sidebar-active: #e8e8f8;
+        --sidebar-muted: rgba(255, 255, 255, 0.22);
+        --border: rgba(255, 255, 255, 0.07);
+        --border-light: rgba(255, 255, 255, 0.04);
+        --rule: rgba(255, 255, 255, 0.04);
+
+        --txt-1: #e8e8f4;
+        --txt-2: rgba(232, 232, 244, 0.55);
+        --txt-3: rgba(232, 232, 244, 0.3);
+        --txt-4: rgba(232, 232, 244, 0.15);
+
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+        --shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+      }
+
+      *, *::before, *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--canvas);
+        color: var(--txt-1);
+        font-family: var(--font);
+        font-size: 13px;
+        line-height: 1.55;
+        overflow-x: hidden;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        transition: background 0.2s, color 0.2s;
+      }
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+      }
+
+      .layout {
+        display: flex;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        width: var(--sw);
+        background: var(--sidebar-bg);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        overflow-y: auto;
+        z-index: 200;
+        flex-shrink: 0;
+      }
+
+      .sb-brand {
+        padding: 20px 18px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .sb-logo-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 5px;
+      }
+      .sb-logo-mark {
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        border-radius: 6px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .sb-logo-mark svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: #fff;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .sb-wordmark {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #ffffff;
+        line-height: 1.1;
+      }
+      .sb-wordmark span {
+        color: #6aabff;
+      }
+      .sb-desc {
+        font-family: var(--mono);
+        font-size: 8px;
+        color: var(--sidebar-muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .sb-section {
+        padding: 16px 18px 5px;
+        font-family: var(--mono);
+        font-size: 7.5px;
+        color: var(--sidebar-muted);
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--sidebar-text);
+        border-left: 2px solid transparent;
+        transition: all 0.12s;
+        letter-spacing: 0.01em;
+        user-select: none;
+        position: relative;
+      }
+      .nav-item:hover {
+        color: var(--sidebar-active);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .nav-item.active {
+        color: var(--sidebar-active);
+        border-left-color: #6aabff;
+        background: var(--sidebar-active-bg);
+        font-weight: 600;
+      }
+      .nav-icon-wrap {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 11px;
+        color: var(--sidebar-text);
+        transition: all 0.12s;
+      }
+      .nav-item.active .nav-icon-wrap {
+        background: rgba(106, 171, 255, 0.15);
+        color: #6aabff;
+      }
+      .nav-chip {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 7.5px;
+        padding: 2px 6px;
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.5);
+        border-radius: 3px;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+      .nav-item.active .nav-chip {
+        background: rgba(106, 171, 255, 0.15);
+        color: #6aabff;
+      }
+      .sb-divider {
+        height: 1px;
+        background: rgba(255, 255, 255, 0.07);
+        margin: 8px 0;
+      }
+      .sb-footer {
+        margin-top: auto;
+        padding: 14px 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 10px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: var(--r);
+        cursor: pointer;
+        margin-bottom: 10px;
+        transition: background 0.12s;
+      }
+      .theme-toggle:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .theme-toggle-label {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--sidebar-muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .theme-pill {
+        width: 32px;
+        height: 17px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 9px;
+        position: relative;
+      }
+      [data-theme="dark"] .theme-pill {
+        background: rgba(106, 171, 255, 0.3);
+      }
+      .theme-knob {
+        width: 11px;
+        height: 11px;
+        background: #fff;
+        border-radius: 50%;
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      [data-theme="dark"] .theme-knob {
+        transform: translateX(15px);
+      }
+
+      .sb-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 8.5px;
+        color: var(--sidebar-muted);
+        letter-spacing: 0.04em;
+      }
+      .sb-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #22c55e;
+        box-shadow: 0 0 5px #22c55e;
+        animation: pulse 2.5s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .sb-build {
+        font-family: var(--mono);
+        font-size: 7.5px;
+        color: rgba(255, 255, 255, 0.18);
+        margin-top: 4px;
+        letter-spacing: 0.04em;
+      }
+
+      .main {
+        margin-left: var(--sw);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      .topbar {
+        height: var(--th);
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .tb-l {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .tb-page {
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--txt-1);
+        letter-spacing: -0.01em;
+      }
+      .breadcrumb-trail {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--txt-3);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .bc-sep {
+        color: var(--txt-4);
+      }
+
+      .tb-r {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tb-btn {
+        padding: 7px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        cursor: pointer;
+        font-family: var(--font);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--txt-2);
+        transition: all 0.12s;
+        white-space: nowrap;
+      }
+      .tb-btn:hover {
+        color: var(--txt-1);
+        background: var(--surface-2);
+        border-color: var(--txt-4);
+      }
+      .tb-btn-primary {
+        background: var(--blue);
+        color: #fff;
+        border-color: var(--blue);
+      }
+      .tb-btn-primary:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+      }
+      .tb-select-wrap {
+        position: relative;
+      }
+      .tb-select {
+        padding: 7px 28px 7px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        color: var(--txt-1);
+        font-size: 11px;
+        font-family: var(--font);
+        font-weight: 700;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.12s;
+        appearance: none;
+        letter-spacing: 0.01em;
+      }
+      .tb-select:focus {
+        border-color: var(--blue);
+      }
+      .tb-select-wrap::after {
+        content: "";
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 3px solid transparent;
+        border-right: 3px solid transparent;
+        border-top: 4px solid var(--txt-3);
+        pointer-events: none;
+      }
+      .content {
+        padding: 22px 24px;
+        flex: 1;
+      }
+      .page {
+        display: none;
+      }
+      .page.active {
+        display: block;
+        animation: fadein 0.16s ease;
+      }
+      @keyframes fadein {
+        from {
+          opacity: 0;
+          transform: translateY(5px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .ph {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .ph-title {
+        font-size: 17px;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        color: var(--txt-1);
+        margin-bottom: 3px;
+      }
+      .ph-sub {
+        font-size: 11px;
+        color: var(--txt-3);
+        font-weight: 400;
+      }
+
+      .status-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 900;
+        font-family: var(--mono);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        border: 1px solid;
+      }
+      .tag-green {
+        background: var(--green-bg);
+        color: var(--green);
+        border-color: var(--green-brd);
+      }
+      .tag-blue {
+        background: var(--blue-bg);
+        color: var(--blue);
+        border-color: var(--blue-brd);
+      }
+      .tag-violet {
+        background: var(--violet-bg);
+        color: var(--violet);
+        border-color: var(--violet-brd);
+      }
+      .tag-amber {
+        background: var(--amber-bg);
+        color: var(--amber);
+        border-color: var(--amber-brd);
+      }
+      .tag-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: pulse 2s infinite;
+      }
+
+      .g4 {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .g3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .g2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .mb {
+        margin-bottom: 14px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 16px 18px;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 0.15s, border-color 0.15s;
+      }
+      .card:hover {
+        box-shadow: var(--shadow);
+      }
+      .card-hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .card-title {
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+      }
+
+      .kpi {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 16px 18px;
+        box-shadow: var(--shadow-sm);
+        position: relative;
+        overflow: hidden;
+      }
+      .kpi::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3px;
+        border-radius: 3px 0 0 3px;
+        background: var(--kpi-color, var(--blue));
+      }
+      .kpi-label {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        margin-bottom: 8px;
+        padding-left: 10px;
+      }
+      .kpi-val {
+        font-size: 28px;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        color: var(--txt-1);
+        line-height: 1;
+        margin-bottom: 5px;
+        padding-left: 10px;
+      }
+      .kpi-delta {
+        font-family: var(--mono);
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding-left: 10px;
+      }
+      .delta-up {
+        color: var(--green);
+      }
+      .delta-dn {
+        color: var(--red);
+      }
+      .delta-flat {
+        color: var(--txt-3);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 900;
+        font-family: var(--mono);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid;
+        white-space: nowrap;
+      }
+      .b-green {
+        background: var(--green-bg);
+        color: var(--green);
+        border-color: var(--green-brd);
+      }
+      .b-amber {
+        background: var(--amber-bg);
+        color: var(--amber);
+        border-color: var(--amber-brd);
+      }
+      .b-red {
+        background: var(--red-bg);
+        color: var(--red);
+        border-color: var(--red-brd);
+      }
+      .b-blue {
+        background: var(--blue-bg);
+        color: var(--blue);
+        border-color: var(--blue-brd);
+      }
+      .b-violet {
+        background: var(--violet-bg);
+        color: var(--violet);
+        border-color: var(--violet-brd);
+      }
+      .b-cyan {
+        background: var(--cyan-bg);
+        color: var(--cyan);
+        border-color: var(--cyan-brd);
+      }
+
+      .rmeter {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .rmeter-bar {
+        flex: 1;
+        height: 4px;
+        background: var(--surface-3);
+        border-radius: 2px;
+        overflow: hidden;
+        min-width: 52px;
+      }
+      .rmeter-fill {
+        height: 100%;
+        border-radius: 2px;
+      }
+      .rmeter-val {
+        font-family: var(--mono);
+        font-size: 10px;
+        width: 34px;
+        text-align: right;
+        font-weight: 900;
+      }
+
+      .dt {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .dt thead th {
+        font-family: var(--mono);
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+        font-weight: 900;
+        white-space: nowrap;
+        background: var(--surface-2);
+      }
+      .dt tbody td {
+        padding: 10px 12px;
+        font-size: 12px;
+        color: var(--txt-2);
+        border-bottom: 1px solid var(--rule);
+        white-space: nowrap;
+      }
+      .dt tbody tr:last-child td {
+        border-bottom: none;
+      }
+
+      .cw {
+        position: relative;
+      }
+      .cw canvas {
+        width: 100% !important;
+      }
+
+      .info-strip {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 11px 14px;
+        background: var(--blue-bg);
+        border: 1px solid var(--blue-brd);
+        border-radius: var(--r);
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--txt-2);
+        margin-bottom: 14px;
+        line-height: 1.6;
+      }
+      .info-strip-icon {
+        width: 14px;
+        height: 14px;
+        color: var(--blue);
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+
+      .fbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .fbar-name {
+        font-size: 11px;
+        color: var(--txt-2);
+        font-weight: 600;
+        min-width: 220px;
+      }
+      .fbar-track {
+        flex: 1;
+        height: 5px;
+        background: var(--surface-3);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .fbar-fill {
+        height: 100%;
+        border-radius: 3px;
+      }
+      .fbar-pct {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--txt-3);
+        width: 38px;
+        text-align: right;
+        font-weight: 900;
+      }
+
+      .mini-stat {
+        background: var(--surface-2);
+        border: 1px solid var(--border-light);
+        border-radius: var(--r);
+        padding: 10px 12px;
+      }
+      .mini-stat-label {
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        margin-bottom: 6px;
+      }
+      .mini-stat-val {
+        font-family: var(--mono);
+        font-size: 16px;
+        font-weight: 900;
+        color: var(--txt-1);
+        margin-bottom: 2px;
+      }
+      .mini-stat-sub {
+        font-size: 12px;
+        color: var(--txt-2);
+        line-height: 1.4;
+      }
+
+      .skill-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .skill-tag {
+        padding: 4px 10px;
+        border-radius: 5px;
+        font-size: 10px;
+        font-weight: 900;
+        font-family: var(--mono);
+        letter-spacing: 0.03em;
+        cursor: default;
+        border: 1px solid;
+        transition: all 0.12s;
+        user-select: none;
+      }
+      .skill-tag:hover {
+        filter: brightness(0.95);
+      }
+      .s-tech {
+        background: var(--cyan-bg);
+        color: var(--cyan);
+        border-color: var(--cyan-brd);
+      }
+      .s-biz {
+        background: var(--amber-bg);
+        color: var(--amber);
+        border-color: var(--amber-brd);
+      }
+      .s-design {
+        background: var(--violet-bg);
+        color: var(--violet);
+        border-color: var(--violet-brd);
+      }
+      .s-soft {
+        background: var(--green-bg);
+        color: var(--green);
+        border-color: var(--green-brd);
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+      .form-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        margin-bottom: 5px;
+      }
+      .form-ctrl {
+        width: 100%;
+        padding: 8px 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        color: var(--txt-1);
+        font-size: 12px;
+        font-family: var(--font);
+        font-weight: 600;
+        outline: none;
+        transition: border-color 0.12s, box-shadow 0.12s;
+        appearance: none;
+      }
+      .form-ctrl:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      }
+
+      .cbrow {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .cbitem {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--txt-2);
+        cursor: pointer;
+        user-select: none;
+      }
+      .cbitem input {
+        accent-color: var(--blue);
+      }
+
+      .btn-run {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 10px 20px;
+        background: var(--blue);
+        border: none;
+        border-radius: var(--r);
+        color: #fff;
+        font-family: var(--font);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.15s;
+        box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
+      }
+      .btn-run:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+      }
+
+      .pred-empty {
+        padding: 50px 24px;
+        text-align: center;
+      }
+      .pred-empty-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--blue-bg);
+        border: 1px solid var(--blue-brd);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 12px;
+        color: var(--blue);
+        font-size: 18px;
+      }
+      .pred-empty-txt {
+        font-size: 12px;
+        color: var(--txt-3);
+        font-weight: 600;
+        line-height: 1.6;
+      }
+
+      .pred-score-big {
+        font-size: 44px;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        color: var(--txt-1);
+        line-height: 1;
+        margin-bottom: 6px;
+      }
+
+      .sep {
+        height: 1px;
+        background: var(--border);
+        margin: 14px 0;
+      }
+
+      .mrow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .mrow:last-child {
+        border-bottom: none;
+      }
+      .mrow-label {
+        font-size: 12px;
+        color: var(--txt-2);
+        font-weight: 500;
+      }
+      .mrow-val {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 900;
+        color: var(--txt-1);
+      }
+      .mrow-val.green {
+        color: var(--green);
+      }
+      .mrow-val.blue {
+        color: var(--blue);
+      }
+      .mrow-val.amber {
+        color: var(--amber);
+      }
+      .mrow-val.violet {
+        color: var(--violet);
+      }
+
+      .tbl-wrap {
+        overflow-x: auto;
+      }
+
+      .insight-card {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 14px 16px;
+      }
+      .insight-header {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        margin-bottom: 10px;
+      }
+
+      .role-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-lg);
+        padding: 14px 16px;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.15s;
+      }
+      .role-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+      }
+      .rc-cat {
+        font-family: var(--mono);
+        font-size: 8.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--txt-3);
+        margin-bottom: 4px;
+        font-weight: 900;
+      }
+      .rc-name {
+        font-size: 14px;
+        font-weight: 900;
+        color: var(--txt-1);
+        letter-spacing: -0.015em;
+        margin-bottom: 12px;
+      }
+      .rc-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding-top: 10px;
+        border-top: 1px solid var(--rule);
+      }
+      .rc-sl {
+        font-size: 8.5px;
+        color: var(--txt-3);
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 3px;
+      }
+      .rc-sv {
+        font-size: 17px;
+        font-weight: 900;
+        color: var(--txt-1);
+        letter-spacing: -0.03em;
+      }
+
+      .cm {
+        display: grid;
+        grid-template-columns: 72px repeat(3, 1fr);
+        gap: 3px;
+      }
+      .cm-cell {
+        padding: 9px 5px;
+        text-align: center;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .cm-hdr {
+        background: var(--surface-2);
+        color: var(--txt-3);
+        font-size: 8.5px;
+        letter-spacing: 0.07em;
+        font-weight: 900;
+      }
+      .cm-diag {
+        background: rgba(37, 99, 235, 0.12);
+        color: var(--blue);
+        border: 1px solid var(--blue-brd);
+      }
+      .cm-off {
+        background: var(--surface-2);
+        color: var(--txt-2);
+      }
+      .cm-lbl {
+        background: transparent;
+        color: var(--txt-3);
+        font-size: 8.5px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 8px;
+        font-weight: 900;
+      }
+
+      [data-a] {
+        opacity: 0;
+        transform: translateY(8px);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      [data-a].in {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sb-brand">
+          <div class="sb-logo-row">
+            <div class="sb-logo-mark">
+              <svg viewBox="0 0 14 14">
+                <polyline points="1,10 4,6 7,8 10,4 13,2" />
+                <circle cx="10" cy="4" r="1.2" />
+              </svg>
+            </div>
+            <div>
+              <div class="sb-wordmark">TOUCH<span>GRASS</span></div>
+            </div>
+          </div>
+          <div class="sb-desc">Placement Readiness Analytics</div>
+        </div>
+
+        <div class="sb-section">Analytics</div>
+        <div class="nav-item active" onclick="goto('overview',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <rect x="1" y="9" width="4" height="6" rx="1" />
+              <rect x="6" y="5" width="4" height="10" rx="1" />
+              <rect x="11" y="1" width="4" height="14" rx="1" />
+            </svg>
+          </div>
+          Overview
+          <span class="nav-chip" id="nav-live-chip">LIVE</span>
+        </div>
+
+        <div class="nav-item" onclick="goto('cohort',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <circle cx="6" cy="5" r="3" />
+              <path d="M1 14c0-3 2-5 5-5" />
+              <circle cx="12" cy="5" r="2" />
+              <path d="M12 10c2 0 3 1.5 3 4" />
+            </svg>
+          </div>
+          Cohort Analytics
+        </div>
+
+        <div class="nav-item" onclick="goto('career',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z" />
+            </svg>
+          </div>
+          Career Readiness
+        </div>
+
+        <div class="nav-item" onclick="goto('skills',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <circle cx="8" cy="8" r="7" />
+              <path d="M8 5v3l2 2" />
+            </svg>
+          </div>
+          Skill Gap Analysis
+        </div>
+
+        <div class="sb-divider"></div>
+        <div class="sb-section">Intelligence</div>
+        <div class="nav-item" onclick="goto('ml',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <path d="M2 8h2m8 0h2M8 2v2m0 8v2M4.5 4.5l1.5 1.5m4 4l1.5 1.5M4.5 11.5l1.5-1.5m4-4l1.5-1.5" />
+              <circle cx="8" cy="8" r="3" />
+            </svg>
+          </div>
+          ML Models
+          <span class="nav-chip">3</span>
+        </div>
+
+        <div class="nav-item" onclick="goto('predict',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <path d="M3 13L8 3l5 10" />
+              <path d="M5.5 8.5h5" />
+            </svg>
+          </div>
+          New Prediction
+        </div>
+
+        <div class="sb-divider"></div>
+        <div class="sb-section">Data</div>
+        <div class="nav-item" onclick="goto('explorer',this)">
+          <div class="nav-icon-wrap">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 16 16">
+              <rect x="1" y="1" width="14" height="14" rx="1" />
+              <path d="M1 5h14M5 1v14" />
+            </svg>
+          </div>
+          Student Explorer
+          <span class="nav-chip">500</span>
+        </div>
+
+        <div class="sb-footer">
+          <div class="theme-toggle" onclick="toggleTheme()">
+            <div class="theme-toggle-label" id="theme-label">Light Mode</div>
+            <div class="theme-pill"><div class="theme-knob"></div></div>
+          </div>
+          <div class="sb-status">
+            <div class="sb-dot"></div>
+            All systems operational
+          </div>
+          <div class="sb-build">v1.0.0 &nbsp;&middot;&nbsp; Build 2026.02</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="tb-l">
+            <div class="tb-page" id="tb-page">Cohort Overview</div>
+            <div class="breadcrumb-trail">
+              <span>TOUCHGRASS</span>
+              <span class="bc-sep">/</span>
+              <span id="tb-crumb">OVERVIEW</span>
+            </div>
+          </div>
+          <div class="tb-r">
+            <div class="tb-select-wrap">
+              <select class="tb-select" id="overview-program-filter" onchange="filterProgram(this.value)">
+                <option value="all">All Programs</option>
+                <option value="BTech">BTech</option>
+                <option value="BBA">BBA</option>
+                <option value="B.Com">B.Com</option>
+              </select>
+            </div>
+            <button class="tb-btn" id="tb-export">Export CSV</button>
+            <button class="tb-btn tb-btn-primary" id="tb-refresh">Refresh Data</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- PAGE: OVERVIEW -->
+          <div class="page active" id="page-overview">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Cohort Health Overview</div>
+                <div class="ph-sub">Batch 2025&ndash;26 &nbsp;&middot;&nbsp; Live dashboard</div>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <div class="status-tag tag-green"><div class="tag-dot"></div>Live</div>
+                <div class="status-tag tag-blue">ML Enabled</div>
+              </div>
+            </div>
+
+            <div class="g4" data-a>
+              <div class="kpi" style="--kpi-color: var(--blue)">
+                <div class="kpi-label">Total Students</div>
+                <div class="kpi-val" id="kpi-total-students">0</div>
+                <div class="kpi-delta delta-flat" id="kpi-total-delta">0 programs enrolled</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--green)">
+                <div class="kpi-label">Job Ready</div>
+                <div class="kpi-val" id="kpi-job-ready">0</div>
+                <div class="kpi-delta delta-up" id="kpi-job-ready-delta">0% of cohort</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--amber)">
+                <div class="kpi-label">Avg Readiness Score</div>
+                <div class="kpi-val" id="kpi-avg-readiness">0<sup>%</sup></div>
+                <div class="kpi-delta delta-up" id="kpi-avg-readiness-delta">+0pp this semester</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--violet)">
+                <div class="kpi-label">Skills Tracked</div>
+                <div class="kpi-val" id="kpi-skills-tracked">0</div>
+                <div class="kpi-delta delta-flat" id="kpi-skills-delta">4 taxonomy categories</div>
+              </div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Readiness Distribution</div></div>
+                <div class="cw" style="height: 240px"><canvas id="c-rdist"></canvas></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Program Average Readiness</div></div>
+                <div class="cw" style="height: 240px"><canvas id="c-prog"></canvas></div>
+              </div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Year-wise Readiness Progression</div></div>
+                <div class="cw" style="height: 240px"><canvas id="c-yprog"></canvas></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Role × Program Readiness Matrix</div></div>
+                <div class="tbl-wrap">
+                  <table class="dt">
+                    <thead>
+                      <tr>
+                        <th>Program</th>
+                        <th>Data Analyst</th>
+                        <th>Full-Stack Dev</th>
+                        <th>Digital Marketer</th>
+                        <th>Business Analyst</th>
+                        <th>UX/UI Designer</th>
+                        <th>Program Avg</th>
+                      </tr>
+                    </thead>
+                    <tbody id="overview-matrix-tbody">
+                      <!-- filled by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAGE: COHORT -->
+          <div class="page" id="page-cohort">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Cohort Analytics</div>
+                <div class="ph-sub">Program-level and year-level performance distribution</div>
+              </div>
+            </div>
+
+            <div class="g4" data-a>
+              <div class="kpi" style="--kpi-color: var(--cyan)">
+                <div class="kpi-label">BTech Students</div>
+                <div class="kpi-val" id="cohort-kpi-btech">0</div>
+                <div class="kpi-delta delta-flat">0% of cohort</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--blue)">
+                <div class="kpi-label">BBA Students</div>
+                <div class="kpi-val" id="cohort-kpi-bba">0</div>
+                <div class="kpi-delta delta-flat">0% of cohort</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--amber)">
+                <div class="kpi-label">B.Com Students</div>
+                <div class="kpi-val" id="cohort-kpi-bcom">0</div>
+                <div class="kpi-delta delta-flat">0% of cohort</div>
+              </div>
+              <div class="kpi" style="--kpi-color: var(--violet)">
+                <div class="kpi-label">Avg Skills / Student</div>
+                <div class="kpi-val" id="cohort-kpi-skills">0</div>
+                <div class="kpi-delta delta-up">+0 vs prior batch</div>
+              </div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Skill Profile by Program</div></div>
+                <div class="cw" style="height: 230px"><canvas id="c-radar"></canvas></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Skill Acquisition Source</div></div>
+                <div class="cw" style="height: 230px"><canvas id="c-source"></canvas></div>
+              </div>
+            </div>
+
+            <div class="card mb" data-a>
+              <div class="card-hd"><div class="card-title">Proficiency Level Stacking by Year</div></div>
+              <div class="cw" style="height: 240px"><canvas id="c-prof"></canvas></div>
+            </div>
+          </div>
+
+          <!-- PAGE: CAREER -->
+          <div class="page" id="page-career">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Career Readiness Intelligence</div>
+                <div class="ph-sub">Role-specific analysis across 5 career paths</div>
+              </div>
+            </div>
+
+            <div class="g3" data-a id="career-role-cards">
+              <!-- filled by JS -->
+            </div>
+
+            <div class="card mb" data-a>
+              <div class="card-hd"><div class="card-title">Role Readiness Score Distribution</div></div>
+              <div class="cw" style="height: 240px"><canvas id="c-roleread"></canvas></div>
+            </div>
+          </div>
+
+          <!-- PAGE: SKILLS -->
+          <div class="page" id="page-skills">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Skill Gap Analysis</div>
+                <div class="ph-sub">Critical missing skills across the student population</div>
+              </div>
+            </div>
+
+            <div class="info-strip" data-a>
+              <svg class="info-strip-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="7" cy="7" r="6" />
+                <path d="M7 4v4M7 10h.01" />
+              </svg>
+              High-importance skills with large gap counts represent the highest-leverage intervention points.
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Top Missing Skills — By Frequency</div></div>
+                <div id="gap-list"></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Skill Category Coverage</div></div>
+                <div class="cw" style="height: 240px"><canvas id="c-skillcat"></canvas></div>
+              </div>
+            </div>
+
+            <div class="card mb" data-a>
+              <div class="card-hd"><div class="card-title">Full Skill Taxonomy</div></div>
+              <div class="skill-cloud" id="skill-cloud"></div>
+            </div>
+
+            <div class="card mb" data-a>
+              <div class="card-hd"><div class="card-title">Skill Gap by Career Role</div></div>
+              <div class="cw" style="height: 240px"><canvas id="c-gaprole"></canvas></div>
+            </div>
+          </div>
+
+          <!-- PAGE: ML -->
+          <div class="page" id="page-ml">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Machine Learning Models</div>
+                <div class="ph-sub">Feature importance, confusion matrix, and correlation signals</div>
+              </div>
+              <div><div class="status-tag tag-violet">Inference Ready</div></div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Model Performance Metrics</div></div>
+                <div id="ml-metrics" style="padding: 6px 2px;"></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Data Drift Monitor</div></div>
+                <div id="ml-drift" style="padding: 6px 2px;"></div>
+              </div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Feature Importance — Random Forest Regressor</div></div>
+                <div id="fi-list"></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Confusion Matrix — Decision Tree (Test Set)</div></div>
+                <div style="font-family: var(--mono); font-size: 10px; color: var(--txt-3); margin-bottom: 8px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 900;">
+                  Predicted Label
+                </div>
+                <div id="cm-grid" class="cm"></div>
+              </div>
+            </div>
+
+            <div class="g2" data-a>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">Rule-Based vs ML Score Correlation</div></div>
+                <div class="cw" style="height: 220px"><canvas id="c-scatter"></canvas></div>
+              </div>
+              <div class="card">
+                <div class="card-hd"><div class="card-title">ML Predicted Score Distribution</div></div>
+                <div class="cw" style="height: 220px"><canvas id="c-mldist"></canvas></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAGE: PREDICT -->
+          <div class="page" id="page-predict">
+            <div class="ph">
+              <div>
+                <div class="ph-title">New Student Prediction</div>
+                <div class="ph-sub">Input aggregated student parameters to generate readiness predictions</div>
+              </div>
+            </div>
+
+            <div class="g2">
+              <div class="card" data-a>
+                <div class="card-hd"><div class="card-title">Student Input Parameters</div></div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label">Academic Program</label>
+                    <select class="form-ctrl" id="p-prog">
+                      <option>BTech (CSE)</option>
+                      <option>BTech (IT)</option>
+                      <option>BBA</option>
+                      <option>B.Com</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Year of Study</label>
+                    <select class="form-ctrl" id="p-year">
+                      <option>Year 1</option>
+                      <option>Year 2</option>
+                      <option selected>Year 3</option>
+                      <option>Year 4</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Target Career Role</label>
+                    <select class="form-ctrl" id="p-role">
+                      <option>Data Analyst</option>
+                      <option>Full-Stack Developer</option>
+                      <option>Digital Marketer</option>
+                      <option>Business Analyst</option>
+                      <option>UX/UI Designer</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Total Skills Acquired</label>
+                    <select class="form-ctrl" id="p-skills">
+                      <option>1–5 skills</option>
+                      <option>6–10 skills</option>
+                      <option selected>11–20 skills</option>
+                      <option>21–30 skills</option>
+                      <option>30+ skills</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Highest Proficiency Level</label>
+                    <select class="form-ctrl" id="p-proficiency">
+                      <option>Beginner (0.25)</option>
+                      <option>Intermediate (0.50)</option>
+                      <option selected>Advanced (0.75)</option>
+                      <option>Expert (1.00)</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Primary Acquisition Source</label>
+                    <select class="form-ctrl" id="p-source">
+                      <option>Courses</option>
+                      <option>Certifications</option>
+                      <option>Projects</option>
+                      <option>Workshops</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                  <div class="form-label" style="margin-bottom: 8px;">Skill Categories Present</div>
+                  <div class="cbrow">
+                    <label class="cbitem"><input type="checkbox" checked id="c-tech"/> Technical</label>
+                    <label class="cbitem"><input type="checkbox" checked id="c-biz"/> Business</label>
+                    <label class="cbitem"><input type="checkbox" id="c-design"/> Design</label>
+                    <label class="cbitem"><input type="checkbox" checked id="c-soft"/> Soft Skills</label>
+                  </div>
+                </div>
+
+                <button class="btn-run" onclick="runPrediction()">Run Prediction</button>
+              </div>
+
+              <div class="card" data-a>
+                <div class="card-hd"><div class="card-title">Model Output</div></div>
+                <div id="p-empty" class="pred-empty">
+                  <div class="pred-empty-icon">✓</div>
+                  <div class="pred-empty-txt">Configure student parameters and run prediction to receive outputs from all three ML models.</div>
+                </div>
+
+                <div id="p-out" style="display: none;">
+                  <div style="display:flex; align-items:flex-end; gap:12px; margin-bottom:14px; padding-bottom:14px; border-bottom: 1px solid var(--border)">
+                    <div>
+                      <div style="font-family: var(--mono); font-size: 9px; color: var(--txt-3); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px;" id="p-role-lbl">DATA ANALYST READINESS SCORE</div>
+                      <div class="pred-score-big" id="p-score">0%</div>
+                    </div>
+                    <div id="p-badge"></div>
+                  </div>
+
+                  <div style="font-family: var(--mono); font-size: 9px; color: var(--txt-3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-weight: 900;">Model Outputs</div>
+                  <div class="mrow"><div class="mrow-label">Decision Tree Classifier</div><div class="mrow-val" id="p-dt">-</div></div>
+                  <div class="mrow"><div class="mrow-label">Random Forest Regressor</div><div class="mrow-val green" id="p-rf">-</div></div>
+                  <div class="mrow"><div class="mrow-label">Gradient Boosting Classifier</div><div class="mrow-val" id="p-gb">-</div></div>
+                  <div class="sep"></div>
+                  <div style="font-family: var(--mono); font-size: 9px; color: var(--txt-3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-weight: 900;">Recommendations</div>
+                  <div id="p-recs"></div>
+                  <div style="font-family: var(--mono); font-size: 9px; color: var(--txt-3); letter-spacing: 0.1em; text-transform: uppercase; margin: 18px 0 8px; font-weight: 900;">Explainability (What drove this?)</div>
+                  <div id="p-explain"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAGE: EXPLORER -->
+          <div class="page" id="page-explorer">
+            <div class="ph">
+              <div>
+                <div class="ph-title">Student Explorer</div>
+                <div class="ph-sub">Browse and filter student readiness scores</div>
+              </div>
+            </div>
+
+            <div class="exp-ctrl" style="display:flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+              <input class="form-ctrl exp-search" type="text" placeholder="Search by name or email..." id="s-q" oninput="filterStudents()" style="min-width: 220px; flex: 1;"/>
+              <select class="form-ctrl" id="s-prog" onchange="filterStudents()" style="min-width: 170px;">
+                <option value="">All Programs</option>
+                <option value="BTech">BTech</option>
+                <option value="BBA">BBA</option>
+                <option value="B.Com">B.Com</option>
+              </select>
+              <select class="form-ctrl" id="s-lvl" onchange="filterStudents()" style="min-width: 170px;">
+                <option value="">All Levels</option>
+                <option value="Ready">Ready</option>
+                <option value="Developing">Developing</option>
+                <option value="Entry-Level">Entry-Level</option>
+              </select>
+              <select class="form-ctrl" id="s-role" onchange="filterStudents()" style="min-width: 190px;">
+                <option value="">All Roles</option>
+                <option value="Data Analyst">Data Analyst</option>
+                <option value="Full-Stack Dev">Full-Stack Dev</option>
+                <option value="Digital Marketer">Digital Marketer</option>
+                <option value="Business Analyst">Business Analyst</option>
+                <option value="UX/UI Designer">UX/UI Designer</option>
+              </select>
+            </div>
+
+            <div class="card" data-a>
+              <div class="card-hd">
+                <div class="card-title">Student Records <span id="s-count" style="color: var(--blue); font-weight: 900;"></span></div>
+              </div>
+              <div class="tbl-wrap">
+                <table class="dt">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Student</th>
+                      <th>Program</th>
+                      <th>Year</th>
+                      <th>Target Role</th>
+                      <th>Skills</th>
+                      <th>Readiness</th>
+                      <th>Level</th>
+                    </tr>
+                  </thead>
+                  <tbody id="s-tbody"></tbody>
+                </table>
+              </div>
+              <div style="padding: 10px 0 0; font-family: var(--mono); font-size: 10px; color: var(--txt-3)">
+                Showing <span id="s-shown">0</span> of <span id="s-total">0</span> records
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // ---------------- Theme + Chart Defaults ----------------
+      function toggleTheme() {
+        const html = document.documentElement;
+        const isDark = html.getAttribute("data-theme") === "dark";
+        html.setAttribute("data-theme", isDark ? "light" : "dark");
+        document.getElementById("theme-label").textContent = isDark ? "Light Mode" : "Dark Mode";
+        // Re-render current page charts with the same fetched data.
+        renderCurrentPageCharts();
+      }
+
+      function isDark() {
+        return document.documentElement.getAttribute("data-theme") === "dark";
+      }
+
+      function getColors() {
+        const txt2 = isDark() ? "rgba(232,232,244,0.45)" : "rgba(82,82,110,0.6)";
+        const grid = isDark() ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.06)";
+        const surface = isDark() ? "#17172a" : "#ffffff";
+        return {
+          txt2,
+          grid,
+          surface,
+          c1: isDark() ? "rgba(59,130,246,0.75)" : "rgba(37,99,235,0.75)",
+          c2: isDark() ? "rgba(34,197,94,0.75)" : "rgba(22,163,74,0.75)",
+          c3: isDark() ? "rgba(217,119,6,0.75)" : "rgba(217,119,6,0.75)",
+          c4: isDark() ? "rgba(139,92,246,0.75)" : "rgba(124,58,237,0.75)",
+          c5: isDark() ? "rgba(6,182,212,0.75)" : "rgba(8,145,178,0.75)",
+          blue: isDark() ? "#3b82f6" : "#2563eb",
+          green: isDark() ? "#22c55e" : "#16a34a",
+          amber: isDark() ? "#f59e0b" : "#d97706",
+          red: isDark() ? "#ef4444" : "#dc2626",
+          violet: isDark() ? "#8b5cf6" : "#7c3aed",
+          cyan: isDark() ? "#06b6d4" : "#0891b2",
+        };
+      }
+
+      function setChartDefaults() {
+        const C = getColors();
+        Chart.defaults.color = C.txt2;
+        Chart.defaults.borderColor = C.grid;
+        Chart.defaults.font.family = "'Montserrat', sans-serif";
+        Chart.defaults.font.size = 10;
+        Chart.defaults.font.weight = "500";
+      }
+
+      const CHART_REG = {};
+      function mkChart(id, cfg) {
+        if (CHART_REG[id]) {
+          CHART_REG[id].destroy();
+          delete CHART_REG[id];
+        }
+        const el = document.getElementById(id);
+        if (!el) return;
+        CHART_REG[id] = new Chart(el.getContext("2d"), cfg);
+      }
+
+      // ---------------- App State ----------------
+      const STATE = {
+        overview: null,
+        cohort: null,
+        career: null,
+        skills: null,
+        ml: null,
+        selectedProgram: "all",
+        currentPage: "overview",
+      };
+
+      const TITLES = {
+        overview: "Cohort Overview",
+        cohort: "Cohort Analytics",
+        career: "Career Readiness",
+        skills: "Skill Gap Analysis",
+        ml: "ML Models",
+        predict: "New Prediction",
+        explorer: "Student Explorer",
+      };
+
+      function trigAnim() {
+        document.querySelectorAll(".page.active [data-a]").forEach((el, i) => {
+          el.classList.remove("in");
+          setTimeout(() => el.classList.add("in"), i * 35);
+        });
+      }
+
+      function goto(id, el) {
+        STATE.currentPage = id;
+        document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
+        document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+
+        document.getElementById("page-" + id).classList.add("active");
+        if (el) el.classList.add("active");
+
+        document.getElementById("tb-page").textContent = TITLES[id];
+        document.getElementById("tb-crumb").textContent = id.toUpperCase();
+
+        if (id === "overview") {
+          loadOverview();
+        } else if (id === "cohort") {
+          loadCohort();
+        } else if (id === "career") {
+          loadCareer();
+        } else if (id === "skills") {
+          loadSkills();
+        } else if (id === "ml") {
+          loadML();
+        } else if (id === "explorer") {
+          filterStudents();
+        }
+        trigAnim();
+      }
+
+      async function safeFetchJSON(url, opts) {
+        const res = await fetch(url, opts);
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error("Request failed: " + res.status + " " + txt);
+        }
+        return await res.json();
+      }
+
+      async function loadOverview() {
+        const program = STATE.selectedProgram || "all";
+        try {
+          STATE.overview = await safeFetchJSON(`/api/overview?program=${encodeURIComponent(program)}`);
+          renderOverview();
+          renderCurrentPageCharts();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadCohort() {
+        try {
+          STATE.cohort = await safeFetchJSON("/api/cohort");
+          renderCohort();
+          renderCurrentPageCharts();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadCareer() {
+        try {
+          STATE.career = await safeFetchJSON("/api/career");
+          renderCareer();
+          renderCurrentPageCharts();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadSkills() {
+        try {
+          STATE.skills = await safeFetchJSON("/api/skills");
+          renderSkills();
+          renderCurrentPageCharts();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      async function loadML() {
+        try {
+          // ML endpoints are split; fetch in parallel.
+          const [fi, cm, corr, dist, postMortem] = await Promise.all([
+            safeFetchJSON(`/api/ml/feature-importance?model=random_forest&top_n=10`),
+            safeFetchJSON(`/api/ml/confusion-matrix?model=decision_tree`),
+            safeFetchJSON(`/api/ml/correlation?sample_size=140`),
+            safeFetchJSON(`/api/ml/score-distribution`),
+            safeFetchJSON(`/api/ml/post-mortem`),
+          ]);
+          const metrics = postMortem?.metrics || {};
+          const drift = postMortem?.drift || {};
+          STATE.ml = { fi, cm, corr, dist, metrics, drift, postMortem };
+          renderML();
+          renderCurrentPageCharts();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function levelToColor(level) {
+        if (level === "Ready") return "var(--green)";
+        if (level === "Developing") return "var(--amber)";
+        return "var(--red)";
+      }
+
+      function scoreToLevel(scorePct) {
+        const s = parseFloat(scorePct);
+        if (s >= 70) return "Ready";
+        if (s >= 50) return "Developing";
+        return "Entry-Level";
+      }
+
+      function levelToBadgeClass(level) {
+        if (level === "Ready") return "b-green";
+        if (level === "Developing") return "b-amber";
+        return "b-red";
+      }
+
+      function programToBadgeClass(programUi) {
+        if (programUi === "BTech") return "b-cyan";
+        if (programUi === "BBA") return "b-blue";
+        return "b-violet";
+      }
+
+      function renderOverview() {
+        if (!STATE.overview) return;
+        const d = STATE.overview;
+        const k = d.kpis || {};
+
+        document.getElementById("kpi-total-students").textContent = k.totalStudents ?? 0;
+        const total = parseFloat(k.totalStudents || 0) || 1;
+        const ready = parseFloat(k.jobReadyStudents || 0);
+        const avg = parseFloat(k.avgReadinessScore || 0);
+
+        document.getElementById("kpi-job-ready").textContent = ready.toFixed(0);
+        document.getElementById("kpi-job-ready-delta").textContent = (ready / total * 100).toFixed(1) + "% of cohort";
+        document.getElementById("kpi-avg-readiness").innerHTML = avg.toFixed(1) + "<sup>%</sup>";
+        document.getElementById("kpi-skills-tracked").textContent = k.skillsTracked ?? 0;
+        // delta text could be computed from history; keep placeholder
+      }
+
+      function renderOverviewMatrix() {
+        if (!STATE.overview) return;
+        const m = STATE.overview.roleProgramMatrix;
+        if (!m || !m.matrix) return;
+        const tbody = document.getElementById("overview-matrix-tbody");
+        if (!tbody) return;
+
+        const roleOrder = m.roles || [];
+        const programOrder = m.programs || [];
+
+        function meterHTML(score) {
+          const level = scoreToLevel(score);
+          const barColor = levelToColor(level);
+          return `
+            <div class="rmeter">
+              <div class="rmeter-bar"><div class="rmeter-fill" style="width:${parseFloat(score).toFixed(1)}%;background:${barColor}"></div></div>
+              <div class="rmeter-val" style="color:${barColor}">${parseFloat(score).toFixed(0)}%</div>
+            </div>
+          `;
+        }
+
+        let html = "";
+        for (const prog of programOrder) {
+          const row = m.matrix[prog] || {};
+          html += `<tr>
+            <td><span class="badge ${programToBadgeClass(prog)}">${prog}</span></td>
+          `;
+          for (const role of roleOrder) {
+            const cell = row[role] || { score: 0, level: "Entry-Level" };
+            html += `<td>${meterHTML(cell.score)}</td>`;
+          }
+          const avg = row.programAvg || { score: 0, level: "Entry-Level" };
+          html += `<td><span class="badge ${levelToBadgeClass(avg.level)}">${parseFloat(avg.score).toFixed(1)}%</span></td>`;
+          html += `</tr>`;
+        }
+
+        tbody.innerHTML = html;
+      }
+
+      function renderCohort() {
+        if (!STATE.cohort) return;
+        const k = STATE.cohort.kpis || {};
+        document.getElementById("cohort-kpi-btech").textContent = k.btechStudents ?? 0;
+        document.getElementById("cohort-kpi-bba").textContent = k.bbaStudents ?? 0;
+        document.getElementById("cohort-kpi-bcom").textContent = k.bcomStudents ?? 0;
+        document.getElementById("cohort-kpi-skills").textContent = (k.avgSkillsPerStudent ?? 0).toFixed(1);
+      }
+
+      function renderCareer() {
+        if (!STATE.career) return;
+        const wrap = document.getElementById("career-role-cards");
+        if (!wrap) return;
+
+        const cards = STATE.career.roleCards || [];
+        const insight = STATE.career.keyInsight || "";
+
+        const catByRole = {
+          "Data Analyst": "Data / Analytics",
+          "Full-Stack Dev": "Development / Engineering",
+          "Digital Marketer": "Marketing / Growth",
+          "Business Analyst": "Business / Strategy",
+          "UX/UI Designer": "Design / Experience",
+        };
+
+        function meterHTML(score, level) {
+          const barColor = levelToColor(level);
+          return `
+            <div style="margin-bottom: 12px">
+              <div class="prog-row" style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">
+                <span class="prog-label" style="font-size:11px; color: var(--txt-2)">Readiness</span>
+                <span class="prog-val" style="color:${barColor}; font-weight:900; font-family: var(--mono)">${parseFloat(score).toFixed(0)}%</span>
+              </div>
+              <div class="prog-track" style="height: 5px; background: var(--surface-3); border-radius: 3px; overflow:hidden">
+                <div class="prog-fill" style="width:${parseFloat(score).toFixed(1)}%; background:${barColor}; height:5px; border-radius:3px"></div>
+              </div>
+            </div>
+          `;
+        }
+
+        let html = "";
+        for (const c of cards) {
+          const cat = catByRole[c.role] || "Career Path";
+          const lv = c.readinessLevel || scoreToLevel(c.readinessPercent || 0);
+          const svColor = levelToColor(lv);
+          html += `
+            <div class="role-card">
+              <div class="rc-cat">${cat}</div>
+              <div class="rc-name">${c.role}</div>
+              ${meterHTML(c.readinessPercent || 0, lv)}
+              <div class="rc-stats">
+                <div>
+                  <div class="rc-sl">Ready</div>
+                  <div class="rc-sv" style="color: var(--green)">${c.readyStudents ?? 0}</div>
+                </div>
+                <div>
+                  <div class="rc-sl">Developing</div>
+                  <div class="rc-sv" style="color: var(--amber)">${c.developingStudents ?? 0}</div>
+                </div>
+                <div>
+                  <div class="rc-sl">Req. Skills</div>
+                  <div class="rc-sv">${c.requiredSkills ?? 0}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // Insight card uses the same g3 grid; append as last item.
+        html += `
+          <div class="insight-card" style="grid-column: span 3;">
+            <div class="insight-header">Key Insight</div>
+            <div style="font-size: 12px; color: var(--txt-2); line-height: 1.75; font-weight: 600;">
+              ${insight || "Insight will be computed from the latest readiness metrics."}
+            </div>
+          </div>
+        `;
+
+        wrap.innerHTML = html;
+      }
+
+      function renderSkills() {
+        if (!STATE.skills) return;
+        const d = STATE.skills;
+
+        const gap = document.getElementById("gap-list");
+        if (gap && d.gaps) {
+          gap.innerHTML = d.gaps
+            .map((g) => {
+              const fillColor = g.imp === "Critical" ? "var(--red)" : "var(--amber)";
+              const badgeClass = g.imp === "Critical" ? "b-red" : "b-amber";
+              return `
+                <div class="fbar">
+                  <div class="fbar-name">${g.name}</div>
+                  <div class="fbar-track"><div class="fbar-fill" style="width:${g.pct}%;background:${fillColor}"></div></div>
+                  <div class="fbar-pct">${g.pct}%</div>
+                  <span class="badge ${badgeClass}" style="margin-left:4px">${g.imp}</span>
+                </div>
+              `;
+            })
+            .join("");
+        }
+
+        const sc = document.getElementById("skill-cloud");
+        if (sc && d.skillCloud) {
+          const catClass = {
+            "Technical": "s-tech",
+            "Business": "s-biz",
+            "Design": "s-design",
+            "Soft Skills": "s-soft",
+          };
+          sc.innerHTML = d.skillCloud
+            .map((s) => `<div class="skill-tag ${catClass[s.category] || ""}">${s.name}</div>`)
+            .join("");
+        }
+      }
+
+      function renderML() {
+        if (!STATE.ml) return;
+
+        const fi = document.getElementById("fi-list");
+        if (fi) {
+          const items = STATE.ml.fi?.items || [];
+          fi.innerHTML = items
+            .map(
+              (f) => `
+                <div class="fbar">
+                  <div class="fbar-name">${f.name}</div>
+                  <div class="fbar-track"><div class="fbar-fill" style="width:${Math.max(2, f.p)}%;background: var(--blue)"></div></div>
+                  <div class="fbar-pct">${f.p}%</div>
+                </div>
+              `
+            )
+            .join("");
+        }
+
+        renderMLMetrics();
+        renderConfusionGrid(STATE.ml.cm);
+      }
+
+      function renderMLMetrics() {
+        const m = STATE.ml?.metrics;
+        const drift = STATE.ml?.drift;
+        const dq = STATE.ml?.postMortem?.dataQuality;
+        const wrap = document.getElementById("ml-metrics");
+        const driftWrap = document.getElementById("ml-drift");
+
+        if (wrap && m) {
+          const dt = m.decision_tree || {};
+          const rf = m.random_forest || {};
+          const gb = m.gradient_boosting || {};
+
+          const trainingDate = m.metadata?.training_date ? String(m.metadata.training_date) : "-";
+
+          const dqRowCount = dq?.row_count ?? "-";
+          const dqColCount = dq?.column_count ?? "-";
+          const dqDupRows = dq?.duplicate_rows ?? "-";
+          const dqNullTotal = (() => {
+            const nullCounts = dq?.null_counts || {};
+            return Object.values(nullCounts).reduce((a, b) => a + (Number(b) || 0), 0);
+          })();
+
+          wrap.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="mini-stat">
+                <div class="mini-stat-label">Decision Tree Accuracy</div>
+                <div class="mini-stat-val">${Number(dt.accuracy ?? 0).toFixed(3)}</div>
+                <div class="mini-stat-sub">F1 (macro): ${Number(dt.f1_macro ?? 0).toFixed(3)}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-stat-label">Gradient Boosting Accuracy</div>
+                <div class="mini-stat-val">${Number(gb.accuracy ?? 0).toFixed(3)}</div>
+                <div class="mini-stat-sub">F1 (macro): ${Number(gb.f1_macro ?? 0).toFixed(3)}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-stat-label">Random Forest R²</div>
+                <div class="mini-stat-val">${Number(rf.r2_score ?? 0).toFixed(3)}</div>
+                <div class="mini-stat-sub">RMSE: ${Number(rf.rmse ?? 0).toFixed(2)}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-stat-label">Training Snapshot</div>
+                <div class="mini-stat-val">${trainingDate}</div>
+                <div class="mini-stat-sub">Used for baseline drift</div>
+              </div>
+              <div class="mini-stat" style="grid-column: span 2;">
+                <div class="mini-stat-label">Data Quality Snapshot</div>
+                <div class="mini-stat-val" style="font-size: 14px; line-height: 1.45;">
+                  Rows: ${dqRowCount} | Columns: ${dqColCount} | Duplicate rows: ${dqDupRows} | Total nulls: ${dqNullTotal}
+                </div>
+                <div class="mini-stat-sub">Loaded from models/data_quality_report.json</div>
+              </div>
+            </div>
+            <div style="margin-top:10px; font-size:12px; color: var(--txt-2); line-height:1.5;">
+              Metrics are loaded from <span style="font-family:var(--mono);">models/model_metrics.json</span>.
+            </div>
+          `;
+        }
+
+        if (driftWrap && drift) {
+          const psiVal = Number(drift.psi_readiness_score ?? 0);
+          let severity = "Stable";
+          if (psiVal > 0.5) severity = "Major drift";
+          else if (psiVal > 0.25) severity = "Moderate drift";
+          else if (psiVal > 0.1) severity = "Minor drift";
+
+          if (drift.available === false) {
+            driftWrap.innerHTML = `<div style="font-size:12px;color:var(--txt-2);line-height:1.6;">${drift.reason || "Drift baseline not available yet. Run training."}</div>`;
+            return;
+          }
+
+          const labels = drift.bins || [];
+          const expected = drift.expected_props || [];
+          const actual = drift.actual_props || [];
+          let maxIdx = 0;
+          let maxAbs = -1;
+          for (let i = 0; i < Math.min(expected.length, actual.length); i++) {
+            const abs = Math.abs((actual[i] ?? 0) - (expected[i] ?? 0));
+            if (abs > maxAbs) { maxAbs = abs; maxIdx = i; }
+          }
+          const worstBin = labels[maxIdx] ? `${labels[maxIdx][0]}-${labels[maxIdx][1]}` : "-";
+          const expPct = (expected[maxIdx] ?? 0) * 100;
+          const actPct = (actual[maxIdx] ?? 0) * 100;
+
+          driftWrap.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="mini-stat">
+                <div class="mini-stat-label">PSI (Readiness Score)</div>
+                <div class="mini-stat-val">${psiVal.toFixed(4)}</div>
+                <div class="mini-stat-sub">${severity}</div>
+              </div>
+              <div class="mini-stat">
+                <div class="mini-stat-label">Worst Bin</div>
+                <div class="mini-stat-val">${worstBin}</div>
+                <div class="mini-stat-sub">Exp: ${expPct.toFixed(1)}% vs Act: ${actPct.toFixed(1)}%</div>
+              </div>
+            </div>
+            <div style="margin-top:10px; font-size:12px; color: var(--txt-2); line-height:1.5;">
+              Readiness distribution drift compares current database scores to the training baseline.
+            </div>
+          `;
+        }
+      }
+
+      function renderConfusionGrid(cmData) {
+        const grid = document.getElementById("cm-grid");
+        if (!grid) return;
+        grid.innerHTML = "";
+
+        if (!cmData || !cmData.matrix || !cmData.classes) return;
+        const classes = cmData.classes;
+        const matrix = cmData.matrix;
+        if (!classes.length || !matrix.length) return;
+
+        // Header row: empty + predicted labels.
+        const empty = document.createElement("div");
+        empty.className = "cm-cell cm-hdr";
+        empty.textContent = "";
+        grid.appendChild(empty);
+
+        for (const predLabel of classes) {
+          const cell = document.createElement("div");
+          cell.className = "cm-cell cm-hdr";
+          cell.textContent = predLabel;
+          grid.appendChild(cell);
+        }
+
+        // Body: each row is actual label + cells
+        for (let i = 0; i < classes.length; i++) {
+          const rowLabel = document.createElement("div");
+          rowLabel.className = "cm-cell cm-lbl";
+          rowLabel.textContent = classes[i];
+          grid.appendChild(rowLabel);
+
+          for (let j = 0; j < classes.length; j++) {
+            const v = (matrix[i] && matrix[i][j] !== undefined) ? matrix[i][j] : 0;
+            const cell = document.createElement("div");
+            cell.className = "cm-cell " + (i === j ? "cm-diag" : "cm-off");
+            cell.textContent = v;
+            grid.appendChild(cell);
+          }
+        }
+      }
+
+      // ---------------- Charts Render ----------------
+      function renderCurrentPageCharts() {
+        const page = STATE.currentPage;
+
+        if (page === "overview") {
+          if (STATE.overview) {
+            renderOverviewMatrix();
+            renderOverviewCharts();
+          }
+        } else if (page === "cohort") {
+          if (STATE.cohort) renderCohortCharts();
+        } else if (page === "career") {
+          if (STATE.career) renderCareerCharts();
+        } else if (page === "skills") {
+          if (STATE.skills) renderSkillsCharts();
+        } else if (page === "ml") {
+          if (STATE.ml) renderMLCharts();
+        }
+      }
+
+      function renderOverviewCharts() {
+        const d = STATE.overview;
+        if (!d) return;
+        const C = getColors();
+
+        // Readiness distribution chart.
+        const dist = d.readinessDistribution || {};
+        const seriesByProgram = dist.seriesByProgram || {};
+        const levels = dist.levels || ["Ready", "Developing", "Entry-Level"];
+        const programs = Object.keys(seriesByProgram);
+        const programColor = {
+          "BTech": C.c5,
+          "BBA": C.c1,
+          "B.Com": C.c4,
+        };
+
+        const datasets = programs.map((p) => {
+          const arr = seriesByProgram[p] || [0, 0, 0];
+          return {
+            label: p,
+            data: arr,
+            backgroundColor: programColor[p] || C.blue,
+            borderRadius: 4,
+          };
+        });
+
+        mkChart("c-rdist", {
+          type: "bar",
+          data: { labels: levels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top", labels: { padding: 14, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+            scales: {
+              x: { grid: { display: false } },
+              y: { grid: { color: C.grid }, ticks: { color: C.txt2 } },
+            },
+          },
+        });
+
+        // Program average readiness.
+        const progAvg = d.programAverageReadiness;
+        mkChart("c-prog", {
+          type: "bar",
+          data: {
+            labels: progAvg.labels,
+            datasets: [
+              {
+                label: "Avg Readiness",
+                data: progAvg.values,
+                backgroundColor: progAvg.labels.map((lab) => {
+                  if (lab === "BTech") return C.c5;
+                  if (lab === "BBA") return C.c1;
+                  return C.c4;
+                }),
+                borderRadius: 5,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: "y",
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: C.grid }, ticks: { color: C.txt2 }, max: 100 },
+              y: { grid: { display: false } },
+            },
+          },
+        });
+
+        // Year-wise progression.
+        const yprog = d.yearWiseReadinessProgression;
+        const series = yprog.series || {};
+        mkChart("c-yprog", {
+          type: "line",
+          data: {
+            labels: yprog.labels,
+            datasets: Object.entries(series).map(([prog, arr]) => {
+              const col =
+                prog === "BTech" ? C.c5 : prog === "BBA" ? C.c1 : C.c4;
+              return {
+                label: prog,
+                data: arr,
+                borderColor: col,
+                backgroundColor: isDark() ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.04)",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: col,
+              };
+            }),
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top", labels: { padding: 14, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+            scales: {
+              x: { grid: { color: C.grid } },
+              y: { grid: { color: C.grid }, ticks: { color: C.txt2, callback: (v) => v + "%" } },
+            },
+          },
+        });
+      }
+
+      function renderCohortCharts() {
+        const d = STATE.cohort;
+        if (!d) return;
+        const C = getColors();
+
+        // Radar
+        const radar = d.radar;
+        mkChart("c-radar", {
+          type: "radar",
+          data: {
+            labels: radar.labels,
+            datasets: Object.entries(radar.series || {}).map(([prog, arr]) => {
+              const col = prog === "BTech" ? C.c5 : prog === "BBA" ? C.c1 : C.c3;
+              const rgba = isDark() ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.02)";
+              return {
+                label: prog,
+                data: arr,
+                borderColor: col,
+                backgroundColor: isDark() ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.03)",
+                pointBackgroundColor: col,
+                pointRadius: 3,
+              };
+            }),
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top", labels: { padding: 12, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+            scales: {
+              r: {
+                grid: { color: C.grid },
+                pointLabels: { color: C.txt2, font: { size: 9 } },
+                ticks: { display: false },
+                angleLines: { color: C.grid },
+              },
+            },
+          },
+        });
+
+        // Doughnut
+        const src = d.source;
+        mkChart("c-source", {
+          type: "doughnut",
+          data: {
+            labels: src.labels.map((l) => l.replace(/\([0-9.]+%\)/, "").trim()),
+            datasets: [
+              {
+                data: src.percentages,
+                backgroundColor: [C.c1, C.c5, C.c3, C.c4],
+                borderWidth: 0,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "72%",
+            plugins: {
+              legend: { position: "right", labels: { padding: 12, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+          },
+        });
+
+        // Stacked bar: proficiency counts by year.
+        const prof = d.proficiency;
+        mkChart("c-prof", {
+          type: "bar",
+          data: {
+            labels: prof.labels,
+            datasets: [
+              {
+                label: "Expert",
+                data: prof.series.Expert,
+                backgroundColor: isDark() ? "rgba(59,130,246,0.85)" : "rgba(37,99,235,0.85)",
+                borderRadius: 2,
+              },
+              {
+                label: "Advanced",
+                data: prof.series.Advanced,
+                backgroundColor: isDark() ? "rgba(6,182,212,0.75)" : "rgba(8,145,178,0.75)",
+                borderRadius: 2,
+              },
+              {
+                label: "Intermediate",
+                data: prof.series.Intermediate,
+                backgroundColor: isDark() ? "rgba(34,197,94,0.65)" : "rgba(22,163,74,0.65)",
+                borderRadius: 2,
+              },
+              {
+                label: "Beginner",
+                data: prof.series.Beginner,
+                backgroundColor: isDark() ? "rgba(245,158,11,0.55)" : "rgba(217,119,6,0.55)",
+                borderRadius: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top", labels: { padding: 12, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+            scales: {
+              x: { stacked: true, grid: { color: C.grid }, ticks: { color: C.txt2 } },
+              y: { stacked: true, grid: { color: C.grid }, ticks: { color: C.txt2 } },
+            },
+          },
+        });
+      }
+
+      function renderCareerCharts() {
+        const d = STATE.career;
+        if (!d) return;
+        const C = getColors();
+        const ch = d.roleReadinessChart || {};
+
+        const labels = ch.labels || [];
+        const palette = labels.map((_, idx) => (idx % 5 === 0 ? C.c5 : idx % 5 === 1 ? C.c1 : idx % 5 === 2 ? C.c3 : idx % 5 === 3 ? C.c4 : C.c2));
+
+        mkChart("c-roleread", {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Ready (%)",
+                data: ch.readyPercentages || [],
+                backgroundColor: palette,
+                borderRadius: 4,
+              },
+              {
+                label: "Developing (%)",
+                data: ch.developingPercentages || [],
+                backgroundColor: palette.map((c) => (isDark() ? c.replace("0.85", "0.18") : c.replace("0.85", "0.15"))),
+                borderRadius: 4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: "top", labels: { padding: 14, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: C.txt2 } },
+              y: { grid: { color: C.grid }, ticks: { color: C.txt2, callback: (v) => v + "%" }, max: 100 },
+            },
+          },
+        });
+      }
+
+      function renderSkillsCharts() {
+        const d = STATE.skills;
+        if (!d) return;
+        const C = getColors();
+
+        // Skill category coverage
+        const cat = d.skillCategoryCoverage;
+        const labels = cat.labels.map((l, i) => `${l} (${cat.values[i] || 0})`);
+        mkChart("c-skillcat", {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [
+              {
+                data: cat.values,
+                backgroundColor: [C.c5, C.c3, C.c4, C.c2],
+                borderWidth: 0,
+                hoverOffset: 8,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "70%",
+            plugins: {
+              legend: { position: "right", labels: { padding: 12, usePointStyle: true, pointStyleWidth: 7 } },
+            },
+          },
+        });
+
+        // Gap by role
+        const gr = d.gapByRole || {};
+        mkChart("c-gaprole", {
+          type: "bar",
+          data: {
+            labels: gr.labels || [],
+            datasets: [
+              { label: "Avg Skills Matched", data: gr.avgMatched || [], backgroundColor: C.c2, borderRadius: 3 },
+              { label: "Avg Skills Gap", data: gr.avgGap || [], backgroundColor: isDark() ? "rgba(239,68,68,.7)" : "rgba(220,38,38,.7)", borderRadius: 3 },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "top", labels: { padding: 12, usePointStyle: true, pointStyleWidth: 7 } } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: C.txt2 } },
+              y: { grid: { color: C.grid }, ticks: { color: C.txt2 } },
+            },
+          },
+        });
+      }
+
+      function renderMLCharts() {
+        const d = STATE.ml;
+        if (!d) return;
+        const C = getColors();
+
+        // Scatter
+        const points = d.corr?.points || [];
+        mkChart("c-scatter", {
+          type: "scatter",
+          data: {
+            datasets: [
+              {
+                label: "Student pairs",
+                data: points.map((p) => ({ x: p.x, y: p.y })),
+                backgroundColor: isDark() ? "rgba(59,130,246,.45)" : "rgba(37,99,235,.4)",
+                pointRadius: 3.5,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { color: C.grid }, title: { display: true, text: "Rule-Based Score (%)", color: C.txt2 }, ticks: { color: C.txt2, callback: (v) => v } },
+              y: { grid: { color: C.grid }, title: { display: true, text: "ML Predicted Score (%)", color: C.txt2 }, ticks: { color: C.txt2, callback: (v) => v } },
+            },
+          },
+        });
+
+        // Histogram
+        const dist = d.dist || {};
+        mkChart("c-mldist", {
+          type: "bar",
+          data: {
+            labels: dist.labels || [],
+            datasets: [
+              {
+                label: "Students",
+                data: dist.counts || [],
+                backgroundColor: dist.counts.map((_, i) => {
+                  if (i < 2) return isDark() ? "rgba(239,68,68,.6)" : "rgba(220,38,38,.6)";
+                  if (i < 4) return isDark() ? "rgba(245,158,11,.65)" : "rgba(217,119,6,.65)";
+                  return isDark() ? "rgba(34,197,94,.7)" : "rgba(22,163,74,.7)";
+                }),
+                borderRadius: 3,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: C.txt2 } },
+              y: { grid: { color: C.grid }, ticks: { color: C.txt2 } },
+            },
+          },
+        });
+      }
+
+      // ---------------- Topbar Actions ----------------
+      function filterProgram(v) {
+        STATE.selectedProgram = v || "all";
+        if (STATE.currentPage === "overview") {
+          loadOverview();
+        }
+      }
+
+      document.getElementById("tb-refresh").addEventListener("click", () => {
+        if (STATE.currentPage === "overview") loadOverview();
+        if (STATE.currentPage === "cohort") loadCohort();
+        if (STATE.currentPage === "career") loadCareer();
+        if (STATE.currentPage === "skills") loadSkills();
+        if (STATE.currentPage === "ml") loadML();
+        if (STATE.currentPage === "explorer") filterStudents();
+      });
+
+      document.getElementById("tb-export").addEventListener("click", async () => {
+        // Placeholder export: export first 100 matching student rows from explorer-style endpoint.
+        try {
+          const program = STATE.selectedProgram === "all" ? "" : STATE.selectedProgram;
+          const data = await safeFetchJSON(`/api/students?program=${encodeURIComponent(program)}&limit=100&offset=0`);
+          const rows = data.records || [];
+          const header = ["id", "name", "email", "program", "year", "role", "skills", "score", "level"];
+          const csv = [
+            header.join(","),
+            ...rows.map((r) =>
+              [
+                r.id,
+                `"${String(r.name).replaceAll('"', '""')}"`,
+                `"${String(r.email).replaceAll('"', '""')}"`,
+                r.prog,
+                r.year,
+                `"${r.role}"`,
+                r.skills,
+                r.score,
+                r.level,
+              ].join(",")
+            ),
+          ].join("\n");
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "students_export.csv";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          alert("Export failed. Open console for details.");
+          console.error(e);
+        }
+      });
+
+      // ---------------- Prediction ----------------
+      async function runPrediction() {
+        const prog = document.getElementById("p-prog").value;
+        const year = document.getElementById("p-year").value;
+        const role = document.getElementById("p-role").value;
+        const totalSkills = document.getElementById("p-skills").value;
+        const proficiency = document.getElementById("p-proficiency").value;
+        const source = document.getElementById("p-source").value;
+
+        const categoriesPresent = {
+          Technical: document.getElementById("c-tech").checked,
+          Business: document.getElementById("c-biz").checked,
+          Design: document.getElementById("c-design").checked,
+          "Soft Skills": document.getElementById("c-soft").checked,
+        };
+
+        document.getElementById("p-out").style.display = "none";
+        document.getElementById("p-empty").style.display = "block";
+
+        try {
+          const resp = await safeFetchJSON("/api/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              program: prog,
+              year: year,
+              role: role,
+              totalSkills: totalSkills,
+              highestProficiency: proficiency,
+              primarySource: source,
+              categoriesPresent: categoriesPresent,
+            }),
+          });
+
+          if (resp.error) {
+            document.getElementById("p-empty").innerHTML =
+              `<div class="pred-empty-txt">Prediction error: ${resp.error}</div>`;
+            return;
+          }
+
+          // Readiness / badge.
+          const level = resp.readiness_level_ml || resp.readinessLevel || resp.decision_tree?.level || "Developing";
+          const scoreRF = resp.random_forest?.score ?? resp.readiness_score_ml ?? 0;
+          const levelBadge = level === "Ready" ? "b-green" : level === "Developing" ? "b-amber" : "b-red";
+
+          document.getElementById("p-role-lbl").textContent = String(role).toUpperCase() + " READINESS SCORE";
+          document.getElementById("p-score").textContent = Number(scoreRF).toFixed(1) + "%";
+          document.getElementById("p-badge").innerHTML = `<span class="badge ${levelBadge}">${level}</span>`;
+
+          document.getElementById("p-dt").textContent = resp.decision_tree?.level || "-";
+          document.getElementById("p-rf").textContent = `${Number(scoreRF).toFixed(1)}%`;
+          document.getElementById("p-gb").textContent = resp.gradient_boosting?.level || "-";
+
+          const recs = {
+            Ready: [
+              "Profile meets market threshold. Transition to active placement activities.",
+              "Conduct structured mock interviews and build a public portfolio.",
+            ],
+            Developing: [
+              "3-5 additional targeted skills required to reach placement threshold.",
+              "Prioritise certification in core " + role + " tools within 60 days.",
+            ],
+            "Entry-Level": [
+              "Significant skill gap identified. A structured development plan is required.",
+              "Focus on foundational technical skills and communication proficiency.",
+            ],
+          };
+
+          const list = recs[level] || recs.Developing;
+          document.getElementById("p-recs").innerHTML = list
+            .map((r) => `<div style="font-size:12px;color:var(--txt-2);font-weight:600;padding:7px 0;border-bottom:1px solid var(--rule)">${r}</div>`)
+            .join("");
+
+          // Explainability: show missing vs matched required skills for the selected role.
+          const explain = resp.explainability || {};
+          const missing = explain.missingSkills || [];
+          const matched = explain.matchedSkills || [];
+          const reqCount = explain.requiredSkillsCount ?? (missing.length + matched.length) ?? 0;
+
+          const explainHtml = `
+            <div style="margin-top:8px; display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div>
+                <div style="font-family: var(--mono); font-size:11px; color: var(--txt-3); letter-spacing:0.1em; text-transform:uppercase; font-weight:900; margin-bottom:6px;">
+                  Matched Required Skills
+                </div>
+                <div style="font-size:12px; color: var(--txt-2); line-height:1.7;">
+                  ${(matched.length ? matched : [{skillName:"-", category:"", requiredProficiency:"-", importanceWeight:0}]).map((s) => {
+                    return `<div style="display:flex; justify-content:space-between; gap:10px; border-bottom: 1px solid var(--rule); padding: 6px 0;">
+                      <div style="font-weight:700; color:var(--txt-1);">${s.skillName || "-"}<span style="font-weight:600; color:var(--txt-3);"> (${s.category || ""})</span></div>
+                      <div style="font-family:var(--mono); color:var(--txt-2); white-space:nowrap;">Req: ${s.requiredProficiency || "-"} | W:${Number(s.importanceWeight ?? 0).toFixed(2)}</div>
+                    </div>`;
+                  }).join("")}
+                </div>
+              </div>
+              <div>
+                <div style="font-family: var(--mono); font-size:11px; color: var(--txt-3); letter-spacing:0.1em; text-transform:uppercase; font-weight:900; margin-bottom:6px;">
+                  Missing Required Skills
+                </div>
+                <div style="font-size:12px; color: var(--txt-2); line-height:1.7;">
+                  ${(missing.length ? missing : [{skillName:"-", category:"", requiredProficiency:"-", importanceWeight:0}]).map((s) => {
+                    return `<div style="display:flex; justify-content:space-between; gap:10px; border-bottom: 1px solid var(--rule); padding: 6px 0;">
+                      <div style="font-weight:700; color:var(--txt-1);">${s.skillName || "-"}<span style="font-weight:600; color:var(--txt-3);"> (${s.category || ""})</span></div>
+                      <div style="font-family:var(--mono); color:var(--txt-2); white-space:nowrap;">Req: ${s.requiredProficiency || "-"} | W:${Number(s.importanceWeight ?? 0).toFixed(2)}</div>
+                    </div>`;
+                  }).join("")}
+                  <div style="margin-top:8px; color:var(--txt-3); font-size:11px;">
+                    Total required skills for this role: ${reqCount}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+
+          document.getElementById("p-explain").innerHTML = explainHtml;
+
+          document.getElementById("p-empty").style.display = "none";
+          document.getElementById("p-out").style.display = "block";
+        } catch (e) {
+          console.error(e);
+          alert("Prediction failed. Open console for details.");
+        }
+      }
+
+      // ---------------- Explorer ----------------
+      async function filterStudents() {
+        const q = (document.getElementById("s-q")?.value || "").trim();
+        const prog = (document.getElementById("s-prog")?.value || "").trim();
+        const lvl = (document.getElementById("s-lvl")?.value || "").trim();
+        const role = (document.getElementById("s-role")?.value || "").trim();
+
+        try {
+          const data = await safeFetchJSON(
+            `/api/students?q=${encodeURIComponent(q)}&program=${encodeURIComponent(prog)}&level=${encodeURIComponent(lvl)}&role=${encodeURIComponent(role)}&limit=20&offset=0`
+          );
+          const rows = data.records || [];
+
+          const tb = document.getElementById("s-tbody");
+          tb.innerHTML = rows
+            .map((s) => {
+              const level = s.level;
+              const barColor = levelToColor(level);
+              const badgeClass = levelToBadgeClass(level);
+              const score = Number(s.score || 0);
+              return `
+                <tr>
+                  <td><span style="font-family: var(--mono); font-size: 10px; color: var(--txt-3); font-weight: 700">${String(s.id).padStart(4, "0")}</span></td>
+                  <td>
+                    <div style="font-size:12px;color:var(--txt-1);font-weight:900;margin-bottom:1px">${s.name}</div>
+                    <div style="font-size:10px;color:var(--txt-3);font-family:var(--mono)">${s.email}</div>
+                  </td>
+                  <td><span class="badge ${programToBadgeClass(s.prog)}">${s.prog}</span></td>
+                  <td><span style="font-family: var(--mono); font-size: 11px; color: var(--txt-2); font-weight: 700">Y${s.year}</span></td>
+                  <td style="font-size:11px;font-weight:700;color:var(--txt-2);max-width:150px;overflow:hidden;text-overflow:ellipsis">${s.role}</td>
+                  <td><span style="font-family: var(--mono); font-size: 11px; font-weight: 900; color: var(--txt-1)">${s.skills}</span></td>
+                  <td>
+                    <div class="rmeter">
+                      <div class="rmeter-bar">
+                        <div class="rmeter-fill" style="width:${score}%;background:${barColor}"></div>
+                      </div>
+                      <div class="rmeter-val" style="color:${barColor}">${score.toFixed(1)}%</div>
+                    </div>
+                  </td>
+                  <td><span class="badge ${badgeClass}">${level}</span></td>
+                </tr>
+              `;
+            })
+            .join("");
+
+          const total = data.total || 0;
+          document.getElementById("s-count").textContent = `${total} results`;
+          document.getElementById("s-shown").textContent = rows.length;
+          document.getElementById("s-total").textContent = total;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // ---------------- Init ----------------
+      window.addEventListener("DOMContentLoaded", () => {
+        setChartDefaults();
+        // Initial render for overview.
+        loadOverview().then(() => {
+          trigAnim();
+        });
+        // Ensure initial charts show correct theme values.
+      });
+    </script>
+  </body>
+</html>
+

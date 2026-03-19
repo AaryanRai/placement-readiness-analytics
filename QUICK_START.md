@@ -61,7 +61,7 @@ DB_PASSWORD=your_actual_password_here
 
 ```bash
 # Install all dependencies
-pip3 install psycopg2-binary SQLAlchemy pandas numpy Faker scikit-learn joblib streamlit plotly APScheduler python-dotenv pytest jupyter
+pip3 install psycopg2-binary SQLAlchemy pandas numpy Faker scikit-learn joblib plotly APScheduler python-dotenv pytest jupyter fastapi uvicorn[standard]
 
 # Or use requirements.txt (may need to fix psycopg2 version)
 pip3 install -r requirements.txt
@@ -85,8 +85,14 @@ python src/data_generation/populate_db.py
 # Step 3: Calculate scores
 python src/core/scoring.py
 
-# Step 4: Launch dashboard
-streamlit run src/dashboard/app.py
+# Step 4: Train ML models
+python src/ml_models/train_models.py
+
+# Step 5: Update scores with ML predictions
+python src/core/scoring_ml.py
+
+# Step 6: Launch dashboard
+uvicorn src.api.server:app --host 0.0.0.0 --port 8000
 ```
 
 ## Verification
@@ -130,7 +136,7 @@ createdb placement_analytics
 
 Once everything is running:
 
-1. **Access Dashboard:** Open http://localhost:8501 in your browser
+1. **Access Dashboard:** Open http://localhost:8000 in your browser
 2. **View Data:** Check all 3 visualizations are displaying
 3. **Explore:** Review student readiness scores and program comparisons
 

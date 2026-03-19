@@ -245,9 +245,19 @@ Once PostgreSQL is configured:
    python src/core/scoring.py
    ```
 
-5. **Launch dashboard:**
+5. **Train ML models:**
    ```bash
-   streamlit run src/dashboard/app.py
+   python src/ml_models/train_models.py
+   ```
+
+6. **Update scores with ML predictions:**
+   ```bash
+   python src/core/scoring_ml.py
+   ```
+
+7. **Launch dashboard:**
+   ```bash
+   uvicorn src.api.server:app --host 0.0.0.0 --port 8000
    ```
 
 ## 📚 Additional Resources
