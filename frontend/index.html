@@ -1524,6 +1524,14 @@
                 <div class="card-hd"><div class="card-title">Student Input Parameters</div></div>
                 <div class="form-grid">
                   <div class="form-group">
+                    <label class="form-label">Student Name</label>
+                    <input class="form-ctrl" id="p-name" type="text" placeholder="e.g. Aaryan Rai" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Student Email</label>
+                    <input class="form-ctrl" id="p-email" type="email" placeholder="e.g. aaryan@example.com" />
+                  </div>
+                  <div class="form-group">
                     <label class="form-label">Academic Program</label>
                     <select class="form-ctrl" id="p-prog">
                       <option>BTech (CSE)</option>
@@ -2169,7 +2177,7 @@
             const abs = Math.abs((actual[i] ?? 0) - (expected[i] ?? 0));
             if (abs > maxAbs) { maxAbs = abs; maxIdx = i; }
           }
-          const worstBin = labels[maxIdx] ? `${labels[maxIdx][0]}-${labels[maxIdx][1]}` : "-";
+          const worstBin = labels[maxIdx] ? String(labels[maxIdx]) : "-";
           const expPct = (expected[maxIdx] ?? 0) * 100;
           const actPct = (actual[maxIdx] ?? 0) * 100;
 
@@ -2688,6 +2696,8 @@
 
       // ---------------- Prediction ----------------
       async function runPrediction() {
+        const studentName = (document.getElementById("p-name")?.value || "").trim();
+        const studentEmail = (document.getElementById("p-email")?.value || "").trim();
         const prog = document.getElementById("p-prog").value;
         const year = document.getElementById("p-year").value;
         const role = document.getElementById("p-role").value;
@@ -2710,6 +2720,8 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              studentName: studentName,
+              studentEmail: studentEmail,
               program: prog,
               year: year,
               role: role,
@@ -2730,8 +2742,9 @@
           const level = resp.readiness_level_ml || resp.readinessLevel || resp.decision_tree?.level || "Developing";
           const scoreRF = resp.random_forest?.score ?? resp.readiness_score_ml ?? 0;
           const levelBadge = level === "Ready" ? "b-green" : level === "Developing" ? "b-amber" : "b-red";
+          const displayName = studentName || resp.input_profile?.studentName || "Student";
 
-          document.getElementById("p-role-lbl").textContent = String(role).toUpperCase() + " READINESS SCORE";
+          document.getElementById("p-role-lbl").textContent = `${displayName.toUpperCase()} - ${String(role).toUpperCase()} READINESS SCORE`;
           document.getElementById("p-score").textContent = Number(scoreRF).toFixed(1) + "%";
           document.getElementById("p-badge").innerHTML = `<span class="badge ${levelBadge}">${level}</span>`;
 

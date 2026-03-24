@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import random
 import uuid
+import hashlib
+import json
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Set, Tuple
@@ -69,6 +71,12 @@ def generate_temp_student_and_predict(session: Session, payload: Dict[str, Any])
     current_year = datetime.now().year
     enrollment_year = int(current_year - (year_of_study - 1))
 
+    # Build deterministic RNG from payload so repeated same inputs generate
+    # the same temporary portfolio and prediction outputs.
+    payload_seed_material = json.dumps(payload, sort_keys=True, default=str)
+    seed = int(hashlib.sha256(payload_seed_material.encode("utf-8")).hexdigest()[:16], 16)
+    rng = random.Random(seed)
+
     # Prepare required skills for the role, grouped by category.
     required_rows = (
         session.query(
@@ -114,14 +122,14 @@ def generate_temp_student_and_predict(session: Session, payload: Dict[str, Any])
         required_ids = list(set(required_ids))
 
         matched_count = min(cat_target, len(required_ids))
-        chosen_required = random.sample(required_ids, matched_count) if matched_count > 0 else []
+        chosen_required = rng.sample(required_ids, matched_count) if matched_count > 0 else []
 
         non_required_pool = [sid for sid in skills_by_category.get(cat, []) if sid not in set(chosen_required)]
         # Also ensure non-required picks exclude required ids (to keep matched count meaningful).
         non_required_pool = [sid for sid in non_required_pool if sid not in set(required_ids)]
         non_matched_target = cat_target - matched_count
         chosen_non_required = (
-            random.sample(non_required_pool, min(non_matched_target, len(non_required_pool)))
+            rng.sample(non_required_pool, min(non_matched_target, len(non_required_pool)))
             if non_matched_target > 0
             else []
         )
@@ -133,8 +141,10 @@ def generate_temp_student_and_predict(session: Session, payload: Dict[str, Any])
     skills_to_add = list(dict.fromkeys(skills_to_add))
 
     temp_uuid = uuid.uuid4().hex
-    temp_name = f"Temp Student {temp_uuid[:6]}"
-    temp_email = f"temp_{temp_uuid}@temp.com"
+    student_name_input = str(payload.get("studentName", "")).strip()
+    student_email_input = str(payload.get("studentEmail", "")).strip()
+    temp_name = student_name_input or f"Temp Student {temp_uuid[:6]}"
+    temp_email = student_email_input or f"temp_{temp_uuid}@temp.com"
 
     temp_student = Student(
         name=temp_name,
@@ -196,6 +206,19 @@ def generate_temp_student_and_predict(session: Session, payload: Dict[str, Any])
         }
 
         pred["explainability"] = explainability
+        pred["input_profile"] = {
+            "studentName": temp_name,
+            "studentEmail": temp_email,
+            "program": str(payload.get("program", "")),
+            "year": year_ui,
+            "role": role_ui,
+            "totalSkills": total_skills,
+            "highestProficiency": proficiency_ui,
+            "primarySource": str(payload.get("primarySource", payload.get("primary_source", ""))),
+            "categoriesPresent": selected_categories,
+            "deterministicSeed": str(seed),
+            "inferenceMode": "trained_models_with_deterministic_temp_portfolio",
+        }
         return pred
     finally:
         # Cleanup temp portfolio rows.
